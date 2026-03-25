@@ -108,7 +108,7 @@ def embed(title: str, body_prefix: str = "") -> dict[str, float]:
 
     Returns: {token: tf_normalized_weight}
     """
-    text = title + " " + body_prefix[:300]
+    text = title + " " + body_prefix[:800]
     tokens = _normalize_and_tokenize(text)
 
     if not tokens:
