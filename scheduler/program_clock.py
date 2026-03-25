@@ -59,6 +59,33 @@ def _archive_mp3(mp3_bytes: bytes, title: str) -> None:
         log.debug("archive_save_failed", error=str(exc))
 
 
+def _cleanup_cache() -> None:
+    """Delete TTS cache files (*.mp3, *.title) older than 4 hours.
+
+    restore_recent_cache uses a 2h window; files older than 4h are never used.
+    Skips the fallback/ subdirectory (those files are permanent).
+    """
+    from datetime import timedelta
+    cache_dir = Path(config.CACHE_DIR)
+    if not cache_dir.exists():
+        return
+    cutoff = datetime.now(timezone.utc).timestamp() - 4 * 3600
+    deleted = 0
+    for f in cache_dir.iterdir():
+        if not f.is_file():
+            continue  # skip subdirectories (fallback/)
+        if f.suffix not in (".mp3", ".title"):
+            continue
+        try:
+            if f.stat().st_mtime < cutoff:
+                f.unlink()
+                deleted += 1
+        except Exception:
+            pass
+    if deleted:
+        log.info("cache_cleanup", deleted_files=deleted)
+
+
 def _cleanup_archive() -> None:
     """7일 이상 된 archive 폴더 삭제."""
     if not _ARCHIVE_ROOT.exists():
@@ -95,6 +122,9 @@ def run_content_pipeline(emergency: bool = False) -> None:
 
         log.info("pipeline_start", emergency=emergency)
         increment("pipeline_runs")
+
+        # Prune old cache files (>4h) on every run to keep disk usage bounded
+        _cleanup_cache()
 
         # Fetch from RSS feeds + GDELT (merged)
         with trace_span("pipeline.fetch"):
@@ -254,9 +284,10 @@ def run_station_id() -> None:
 
 
 def run_daily_cleanup() -> None:
-    """Remove expired entries from article store + archive cleanup."""
+    """Remove expired entries from article store + cache and archive cleanup."""
     deleted = article_store.cleanup_expired()
     log.info("daily_cleanup", deleted=deleted)
+    _cleanup_cache()
     _cleanup_archive()
 
 
