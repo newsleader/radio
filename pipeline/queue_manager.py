@@ -79,7 +79,15 @@ class AudioQueue:
             try:
                 mp3_bytes = Path(mp3_path).read_bytes()
                 if len(mp3_bytes) > 1000:
-                    self.enqueue(mp3_bytes, title="NewsLeader Radio")
+                    # Read title sidecar written by program_clock alongside each TTS file
+                    title = "NewsLeader Radio"
+                    title_path = mp3_path.with_suffix(".title")
+                    if title_path.exists():
+                        try:
+                            title = title_path.read_text(encoding="utf-8").strip() or title
+                        except Exception:
+                            pass
+                    self.enqueue(mp3_bytes, title=title)
                     count += 1
             except Exception as exc:
                 log.warning("cache_restore_error", file=str(mp3_path), error=str(exc))
