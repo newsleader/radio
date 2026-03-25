@@ -99,7 +99,7 @@ def run_content_pipeline(emergency: bool = False) -> None:
         # Fetch from RSS feeds + GDELT (merged)
         with trace_span("pipeline.fetch"):
             rss_articles = asyncio.run(fetch_new_articles())
-            gdelt_articles = asyncio.run(fetch_gdelt_articles())
+            gdelt_articles = [] if emergency else asyncio.run(fetch_gdelt_articles())
         articles = rss_articles + gdelt_articles
         increment("articles_fetched", len(articles))
 
