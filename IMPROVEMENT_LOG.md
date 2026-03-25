@@ -86,3 +86,7 @@
 - program_clock.py uses Korean topic (e.g. '독일 혹등고래 구조 및 핵 폐기물 운송') as display title
 - Falls back to English article title if topic is empty
 - now_playing in status/SSE shows Korean instead of English article titles
+
+### PR #19 — fix: GDELT early-stop on 429 + extend interval 900s→1800s
+- On 429 rate limit, abort remaining batch queries immediately (was sleeping 6s each → 24+ sec wasted)
+- _MIN_INTERVAL: 900s → 1800s (30min) to reduce 429 frequency
