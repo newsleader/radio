@@ -2,7 +2,7 @@
 Fallback audio library — keeps the stream alive when LLM/TTS fails.
 
 Strategy (in priority order):
-  1. TTS-generated static segments (generated once at startup, cached)
+  1. TTS-generated static segments (loaded from disk cache or generated at startup)
   2. Silence (absolute last resort — stream stays connected but silent)
 
 Static segments are TTS-generated Korean announcements:
@@ -11,11 +11,13 @@ Static segments are TTS-generated Korean announcements:
   - 잠시 대기 (please wait)
   - 시간 고지 (current time)
 
-Each segment is generated at startup and stored in memory.
+Segments are persisted to cache/fallback_N.mp3 so they load instantly on restart
+(no TTS call needed). On first run or if cache files are missing, TTS generates them.
 On recovery (real content available again), fallback is skipped.
 """
 import asyncio
 import threading
+from pathlib import Path
 from typing import Optional
 
 import structlog
@@ -33,24 +35,60 @@ _fallback_pool: list[bytes] = []   # pre-generated MP3 bytes
 _pool_lock = threading.Lock()
 
 
+def _cache_path(idx: int) -> Path:
+    from config import config
+    return Path(config.CACHE_DIR) / f"fallback_{idx}.mp3"
+
+
+def _load_from_disk() -> list[bytes]:
+    """Load pre-generated fallback segments from disk cache."""
+    pool = []
+    for i in range(len(_FALLBACK_SCRIPTS)):
+        p = _cache_path(i)
+        if p.exists():
+            try:
+                data = p.read_bytes()
+                if data:
+                    pool.append(data)
+            except Exception:
+                pass
+    return pool
+
+
 def _generate_pool() -> None:
-    """Generate fallback MP3 segments at startup (runs in background thread)."""
+    """Load fallback MP3 segments from disk cache; generate via TTS if missing."""
     from pipeline.tts_engine import text_to_mp3
 
-    pool: list[bytes] = []
-    for script in _FALLBACK_SCRIPTS:
+    # Try loading from disk first (instant, no TTS call needed on restart)
+    pool = _load_from_disk()
+    if len(pool) == len(_FALLBACK_SCRIPTS):
+        with _pool_lock:
+            _fallback_pool.extend(pool)
+        log.info("fallback_library_ready", segments=len(pool), source="disk_cache")
+        return
+
+    # Missing or incomplete cache — generate via TTS and save to disk
+    pool = []
+    for i, script in enumerate(_FALLBACK_SCRIPTS):
         try:
             mp3 = asyncio.run(text_to_mp3(script))
             if mp3:
                 pool.append(mp3)
                 log.debug("fallback_segment_generated", bytes=len(mp3))
+                # Persist to disk for fast reload on next restart
+                try:
+                    p = _cache_path(i)
+                    p.parent.mkdir(parents=True, exist_ok=True)
+                    p.write_bytes(mp3)
+                except Exception as exc:
+                    log.debug("fallback_cache_write_failed", error=str(exc))
         except Exception as exc:
             log.warning("fallback_segment_failed", error=str(exc))
 
     with _pool_lock:
         _fallback_pool.extend(pool)
 
-    log.info("fallback_library_ready", segments=len(pool))
+    log.info("fallback_library_ready", segments=len(pool), source="tts_generated")
 
 
 def initialize_async() -> None:

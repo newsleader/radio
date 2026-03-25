@@ -224,7 +224,8 @@ def run_watchdog() -> None:
     if status == "critical":
         log.warning("watchdog_critical", buffered_s=round(buffered, 1))
         # Enqueue fallback immediately to prevent silence, then run pipeline
-        enqueue_fallback(count=2)
+        # count=4: all 4 scripts (~40s) covers the gap until next pipeline article
+        enqueue_fallback(count=4)
         run_content_pipeline(emergency=True)
     elif status == "low":
         log.warning("watchdog_low", buffered_s=round(buffered, 1))
