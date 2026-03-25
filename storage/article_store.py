@@ -362,6 +362,29 @@ class ArticleStore:
 
         files = [(f, mt) for f, mt in candidates if f.stem not in aired_set]
         files.sort(key=lambda x: x[1])  # oldest first
+
+        # Mark ALL restored files as aired now so they won't be re-restored
+        # on the next restart (handles articles processed before this fix).
+        if files:
+            restore_hashes = [f.stem for f, _ in files]
+            rh_placeholders = ",".join("?" * len(restore_hashes))
+            now = datetime.utcnow().isoformat()
+            with self._lock:
+                conn = self._connect()
+                # Update existing rows
+                conn.execute(
+                    f"UPDATE seen_articles SET aired=1 WHERE url_hash IN ({rh_placeholders})",
+                    restore_hashes,
+                )
+                # Insert stubs for cache files not yet in DB (pre-fix articles)
+                for h in restore_hashes:
+                    conn.execute(
+                        "INSERT OR IGNORE INTO seen_articles (url_hash, seen_at, aired) VALUES (?,?,1)",
+                        (h, now),
+                    )
+                conn.commit()
+                conn.close()
+
         return files
 
 
