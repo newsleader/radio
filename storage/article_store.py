@@ -322,8 +322,9 @@ class ArticleStore:
         import random
         state = self.get_feed_state(feed_url) or {}
         failures = (state.get("consecutive_failures") or 0) + 1
-        # Backoff: 2^failures minutes, capped at 4 hours (240 min), with ±25% jitter
-        backoff_min = min(2 ** failures, 240)
+        # Backoff: 2^failures minutes, capped at 60 min, with ±25% jitter
+        # 4h cap was too aggressive — good feeds can recover from transient outages
+        backoff_min = min(2 ** failures, 60)
         jitter = backoff_min * 0.25 * (random.random() * 2 - 1)  # ±25%
         backoff_min = max(1, backoff_min + jitter)
         next_check = (datetime.utcnow() + timedelta(minutes=backoff_min)).isoformat()
