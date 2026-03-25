@@ -28,7 +28,11 @@ class NewsScriptResponse(BaseModel):
     @field_validator("script")
     @classmethod
     def script_strip(cls, v: str) -> str:
-        return v.strip()
+        v = v.strip()
+        # Strip bracket characters (prompt bans them; TTS reads them awkwardly)
+        v = re.sub(r'[()【】\[\]{}「」]', '', v)
+        v = re.sub(r' {2,}', ' ', v)
+        return v
 
 
 def _extract_json_from_llm(raw: str) -> Optional[NewsScriptResponse]:
@@ -302,7 +306,8 @@ def generate_script(article: Article) -> Optional[str]:
                       topic=structured.topic, word_count=structured.word_count)
         else:
             # JSON extraction failed — treat raw as plain text (backward compat)
-            script_text = raw
+            script_text = re.sub(r'[()【】\[\]{}「」]', '', raw)
+            script_text = re.sub(r' {2,}', ' ', script_text)
             log.debug("structured_output_fallback_plain", title=article.title[:60])
 
         # Run QA on the extracted script text

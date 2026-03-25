@@ -44,16 +44,23 @@ def normalize_url(url: str) -> str:
         return url
 
 
+def _to_signed64(value: int) -> int:
+    """Convert unsigned 64-bit int to signed 64-bit (SQLite INTEGER range)."""
+    if value >= (1 << 63):
+        return value - (1 << 64)
+    return value
+
+
 def compute_simhash(title: str, body_prefix: str = "") -> int:
-    """Compute 64-bit SimHash of title + first 200 chars of body."""
+    """Compute 64-bit SimHash of title + first 200 chars of body (signed for SQLite)."""
     try:
         from simhash import Simhash
         text = (title + " " + body_prefix[:200]).lower()
-        return Simhash(text).value
+        return _to_signed64(Simhash(text).value)
     except ImportError:
         # Fallback: use simple hash if simhash not installed
         text = (title + " " + body_prefix[:200]).lower()
-        return int(hashlib.sha256(text.encode()).hexdigest()[:16], 16)
+        return _to_signed64(int(hashlib.sha256(text.encode()).hexdigest()[:16], 16))
 
 
 def _normalize_title(title: str) -> str:
