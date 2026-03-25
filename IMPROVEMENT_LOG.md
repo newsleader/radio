@@ -90,3 +90,12 @@
 ### PR #19 — fix: GDELT early-stop on 429 + extend interval 900s→1800s
 - On 429 rate limit, abort remaining batch queries immediately (was sleeping 6s each → 24+ sec wasted)
 - _MIN_INTERVAL: 900s → 1800s (30min) to reduce 429 frequency
+
+### PR #20 — fix: pass url to trafilatura.extract (suppress discarding data warning)
+- trafilatura logged 'discarding data: None' warning when called without a URL parameter
+- Added url= to both trafilatura.extract() call sites in fetcher.py
+
+### PR #21 — fix: cap feed backoff 240min→60min + reset 114 stuck feeds
+- 4-hour max backoff meant major feeds (Yonhap, Hani, MK, Korea Herald) stuck for hours after transient outage
+- 60min cap: faster recovery while still protecting against dead feeds
+- Reset 114 feeds from deep backoff so they retry on next pipeline run
