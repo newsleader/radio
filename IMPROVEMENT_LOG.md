@@ -104,6 +104,12 @@
 - 169 feeds × 30 connection slots: last feeds waited 9+ sec in pool queue → exceeded 10s total timeout
 - 80 slots = at most 2 rounds → queue wait ≤3s → articles_fetched: 94 (was 0 due to all feeds timing out)
 
+### PR #24 — fix: BUFFER_FULL 600s→900s (prevent buffer dip near critical)
+- With 600s FULL threshold and 10min pipeline interval: queue drains from 600s to ~0s between runs
+- Observed: buffer dipped to 154s (10:54) while pipeline was already running and couldn't add content fast enough
+- 900s FULL: pipeline builds 5 more minutes of buffer headroom → after 10min drain, ~300s remains (above BUFFER_LOW)
+- Eliminates the 154s near-critical event while keeping content fresh (900s = 15min max age)
+
 ### PR #23 — fix: remove 39 dead feeds (169→130)
 - 39 feeds had last_success_at=NULL (never worked from Docker environment)
 - Removed: Reddit r/worldnews|technology|science (block RSS without auth), FeedBurner URLs (securityweek, zerohedge — deprecated), SCMP Technology+Asia, Korea Herald World, KBS World, Google AI Blog, Google Project Zero, HBR, Hacker News (hnrss.org), IEEE Spectrum, Tom's Hardware, Dark Reading, SecurityWeek, Middle East Eye, 데일리시큐, AI News, Radio Free Asia, 코인데스크 코리아, The Block, The Batch (deeplearning.ai), 이데일리 (×2), 머니투데이, 서울경제, SBS뉴스, 조선비즈, 연합뉴스 사회, 기획재정부, 금융위원회, 공정거래위원회, WHO News, Carbon Brief, NBER, St. Louis Fed, Investopedia, Anthropic News

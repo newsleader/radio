@@ -24,7 +24,7 @@ class Config:
     # Queue — buffer watermarks
     BUFFER_CRITICAL: int = 60    # < 60s: run pipeline immediately
     BUFFER_LOW: int = 300        # < 300s: buffer low, pipeline needed
-    BUFFER_FULL: int = 600       # >= 600s: buffer full, skip pipeline
+    BUFFER_FULL: int = 900       # >= 900s: buffer full, skip pipeline
 
     # Scheduler
     FETCH_INTERVAL_MINUTES: int = 10
