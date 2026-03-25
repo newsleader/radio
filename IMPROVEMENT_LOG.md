@@ -128,6 +128,13 @@
 - 900s FULL: pipeline builds 5 more minutes of buffer headroom → after 10min drain, ~300s remains (above BUFFER_LOW)
 - Eliminates the 154s near-critical event while keeping content fresh (900s = 15min max age)
 
+### PR #31 — fix: add TTS cache cleanup (delete files >4h old) on every pipeline run
+- cache/ directory grows without bound: no cleanup existed → 385MB / 239 files after one dev session
+- New _cleanup_cache(): deletes cache/*.mp3 and cache/*.title older than 4h (2× the 2h restore window)
+- Skips cache/fallback/ subdirectory (permanent fallback audio)
+- Called on every pipeline run (cheap mtime scan) + in run_daily_cleanup()
+- Max disk usage after fix: ~150-200MB (4h × typical runs × 1.6MB/file)
+
 ### PR #30 — fix: fallback count 4→5 to eliminate 2s silence gap between critical events
 - 27.8s (count=4) < 30s watchdog interval → 2.2s silence every 30s during cold startup
 - 35.2s (count=5, round-robin wraps 0→1→2→3→0) > 30s → no silence between critical cycles
