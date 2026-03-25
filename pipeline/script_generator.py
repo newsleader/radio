@@ -372,6 +372,12 @@ def generate_script(article: Article) -> Optional[tuple]:
 
     increment("scripts_generated")
     word_count = len(script.split())
+    # If JSON parsing didn't yield a topic, extract from closing phrase:
+    # "이상으로 [topic] 소식이었습니다." → topic
+    if not meta_topic:
+        m = re.search(r'이상으로\s+(.+?)\s+소식이었습니다', script)
+        if m:
+            meta_topic = m.group(1).strip()[:40]  # cap at 40 chars for ICY
     topic = meta_topic or ""
     log.info(
         "script_generated",
