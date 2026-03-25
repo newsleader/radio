@@ -79,7 +79,7 @@ class AudioQueue:
             try:
                 mp3_bytes = Path(mp3_path).read_bytes()
                 if len(mp3_bytes) > 1000:
-                    self.enqueue(mp3_bytes, title="[캐시 복원]")
+                    self.enqueue(mp3_bytes, title="NewsLeader Radio")
                     count += 1
             except Exception as exc:
                 log.warning("cache_restore_error", file=str(mp3_path), error=str(exc))
