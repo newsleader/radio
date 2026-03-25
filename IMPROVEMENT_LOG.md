@@ -80,3 +80,9 @@
 ### PR #17 — fix: widen QA closing phrase regex {1,30} → {1,60}
 - Long Korean topic names (>30 chars) were triggering spurious CLOSING_MISSING QA failures despite correct closing phrases
 - scripts_qa_failed now 0 (confirmed) — pipeline runs cleanly
+
+### PR #18 — feat: Korean LLM topic as now-playing display title
+- generate_script() now returns (script, topic) tuple
+- program_clock.py uses Korean topic (e.g. '독일 혹등고래 구조 및 핵 폐기물 운송') as display title
+- Falls back to English article title if topic is empty
+- now_playing in status/SSE shows Korean instead of English article titles
