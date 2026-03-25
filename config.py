@@ -27,7 +27,7 @@ class Config:
     BUFFER_FULL: int = 600       # >= 600s: buffer full, skip pipeline
 
     # Scheduler
-    FETCH_INTERVAL_MINUTES: int = 15
+    FETCH_INTERVAL_MINUTES: int = 10
     WATCHDOG_INTERVAL_SECONDS: int = 30
 
     # LLM — OpenAI-compatible endpoint (Ollama by default)
