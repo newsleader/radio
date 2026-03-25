@@ -257,9 +257,11 @@ def _call_llm(prompt: str, article: Article) -> Optional[str]:
         return None
 
 
-def generate_script(article: Article) -> Optional[str]:
+def generate_script(article: Article) -> Optional[tuple]:
     """
     Generate a Korean radio TTS script via the configured LLM.
+    Returns (script, topic) tuple, or None on failure.
+    topic is the short Korean topic string for 'Now Playing' display (may be empty string).
     Runs QA validation; retries once on failure; uses minimal fallback on refusal.
     """
     from datetime import datetime, timezone, timedelta
@@ -341,15 +343,16 @@ def generate_script(article: Article) -> Optional[str]:
 
     increment("scripts_generated")
     word_count = len(script.split())
+    topic = meta_topic or ""
     log.info(
         "script_generated",
         title=article.title[:60],
         words=word_count,
-        topic=meta_topic or "",
+        topic=topic,
         script_preview=script[-100:].replace("\n", " "),  # 끝부분 확인용
     )
     log.debug("script_full", content=script)
-    return script
+    return script, topic
 
 
 def generate_station_id() -> str:

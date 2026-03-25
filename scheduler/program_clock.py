@@ -155,23 +155,26 @@ def run_content_pipeline(emergency: bool = False) -> None:
                 continue
 
             try:
-                script = generate_script(article)
+                result = generate_script(article)
             except Exception as exc:
                 log.warning("script_skipped",
                             title=article.title[:60], error=type(exc).__name__)
                 continue
-            if not script:
+            if not result:
                 continue
+            script, topic = result
 
             cache_key = hashlib.sha256(script.encode()).hexdigest()[:16]
             mp3_bytes = asyncio.run(text_to_mp3(script, cache_key=cache_key))
             if not mp3_bytes:
                 continue
 
+            # Use Korean topic as display title if available (fallback: English article title)
+            display_title = topic or article.title
             if is_brk:
-                audio_queue.enqueue_priority(mp3_bytes, title=article.title)
+                audio_queue.enqueue_priority(mp3_bytes, title=display_title)
             else:
-                audio_queue.enqueue(mp3_bytes, title=article.title)
+                audio_queue.enqueue(mp3_bytes, title=display_title)
 
             # ── Archive: 날짜별 MP3 저장 ──────────────────────────
             _archive_mp3(mp3_bytes, article.title)
