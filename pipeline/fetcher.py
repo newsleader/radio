@@ -94,7 +94,7 @@ def _is_fresh(entry: Any) -> bool:
 
 # ── Body extraction ──────────────────────────────────────────────────────────
 
-def _get_content_encoded(entry: Any) -> str:
+def _get_content_encoded(entry: Any, url: str = "") -> str:
     """Extract full article text from RSS content:encoded field."""
     content_list = getattr(entry, "content", [])
     if content_list:
@@ -103,7 +103,8 @@ def _get_content_encoded(entry: Any) -> str:
         if val and len(val) > 200:
             try:
                 import trafilatura
-                text = trafilatura.extract(val, include_comments=False, include_tables=False)
+                text = trafilatura.extract(val, url=url or None,
+                                           include_comments=False, include_tables=False)
                 if text and len(text) > 150:
                     return text[:3000]
             except Exception:
@@ -119,7 +120,7 @@ def _get_content_encoded(entry: Any) -> str:
 
 async def _extract_body(session: aiohttp.ClientSession, url: str, entry: Any) -> str:
     # 1. Try RSS content:encoded (no HTTP request needed)
-    inline = _get_content_encoded(entry)
+    inline = _get_content_encoded(entry, url=url)
     if inline:
         return inline
 
@@ -133,7 +134,8 @@ async def _extract_body(session: aiohttp.ClientSession, url: str, entry: Any) ->
             html = await resp.text(errors="replace")
 
         import trafilatura
-        text = trafilatura.extract(html, include_comments=False, include_tables=False)
+        text = trafilatura.extract(html, url=url,
+                                   include_comments=False, include_tables=False)
         if text and len(text) > 150:
             return text[:3000]
     except Exception:
