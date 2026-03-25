@@ -104,6 +104,19 @@
 - 169 feeds × 30 connection slots: last feeds waited 9+ sec in pool queue → exceeded 10s total timeout
 - 80 slots = at most 2 rounds → queue wait ≤3s → articles_fetched: 94 (was 0 due to all feeds timing out)
 
+### PR #34 — fix: FETCH_TIMEOUT 15s→20s + reset 48 stuck feeds
+- 24 feeds have avg_latency 15-27s (netflixtech=27s, straitstimes/koreaherald/scmp=20s, yonhap/hani=17-18s, etc.)
+- These feeds timeout at 15s → consecutive_failures++ → 60-min backoff → retry → timeout again
+- After overnight: 48 feeds at 8-17 consecutive failures, articles_fetched dropped 120→54
+- FETCH_TIMEOUT 15s→20s covers all but the most extreme (netflixtechblog at 27s avg)
+- Also manually reset 48 feeds from ≥8 failures → 3 failures + next_check_at=now for immediate retry
+
+### PR #33 — fix: TCPConnector limit 80→len(RSS_FEEDS) (130)
+- With limit=80 and 130 feeds, last 50 feeds waited for a slot
+- aiohttp ClientTimeout(total=15) includes pool-wait time → feeds with 3s pool wait + 13s HTTP = timeout
+- Setting limit=len(RSS_FEEDS) = 0 pool wait, every feed gets full timeout budget for HTTP
+- Resolves root cause of slow feeds failing despite being within timeout
+
 ### PR #32 — fix: suppress trafilatura/htmldate/apscheduler verbose logging
 - trafilatura + htmldate log at ERROR level for normal extraction failures ("discarding data", "empty HTML tree", "parsed tree length") — not actionable, silenced with CRITICAL
 - apscheduler logs "Job executed successfully" at INFO every 30s (watchdog = 2,880 lines/day) — silenced at WARNING (keeps misfires/errors visible)
