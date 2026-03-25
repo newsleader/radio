@@ -72,3 +72,11 @@
 - LLM call: add max_tokens=4096 (prevents empty output on thinking models)
 - QA min word count: 80 → 120 (target is 170-210; 80 was too lenient)
 - QA: add bracket check — (), [], 【】 banned by prompt, now enforced by QA
+
+### PR #16 — fix: simhash SQLite overflow + auto-strip brackets
+- compute_simhash: unsigned 64-bit → signed 64-bit (_to_signed64) to prevent 'Python int too large to convert to SQLite INTEGER' pipeline crash
+- script_generator: strip ()[]【】{}「」 in NewsScriptResponse validator and plain-text fallback path (eliminates BRACKETS_FOUND QA retries at source)
+
+### PR #17 — fix: widen QA closing phrase regex {1,30} → {1,60}
+- Long Korean topic names (>30 chars) were triggering spurious CLOSING_MISSING QA failures despite correct closing phrases
+- scripts_qa_failed now 0 (confirmed) — pipeline runs cleanly
