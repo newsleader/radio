@@ -13,6 +13,7 @@ Improvements over baseline:
 """
 import asyncio
 import hashlib
+import re
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
@@ -35,6 +36,16 @@ FETCH_TIMEOUT = aiohttp.ClientTimeout(total=20)    # 24 feeds have avg_latency 1
 ARTICLE_TIMEOUT = aiohttp.ClientTimeout(total=12)  # article body fetch
 MAX_ARTICLES_PER_FEED = 8
 MAX_ARTICLE_AGE_HOURS = 8
+MIN_BODY_LENGTH = 300  # articles shorter than this rarely produce 120-word scripts
+
+# Title patterns that indicate non-news content — filtered before body fetch (saves HTTP round-trip)
+_NON_NEWS_TITLE_RE = re.compile(
+    r"운세|점성|별자리"                           # horoscope/astrology
+    r"|^\S[\w\-\.]+\s+v?\d+\.\d+[a-z]\d*$"      # software release: "package-name 1.2a3"
+    r"|demo day dates?"                           # event listing titles
+    r"|\bchangelog\b",
+    re.IGNORECASE,
+)
 
 _USER_AGENT = "Mozilla/5.0 (compatible; NewsLeader/1.0; +https://github.com/newsleader)"
 
@@ -234,6 +245,11 @@ async def _fetch_feed(
         if not _is_fresh(entry):
             continue
 
+        # Title-based non-news filter (cheap regex, runs before HTTP body fetch)
+        if _NON_NEWS_TITLE_RE.search(title):
+            log.debug("non_news_title_skipped", title=title[:80])
+            continue
+
         # URL-hash dedup (exact URL match)
         normalized = normalize_url(url)
         url_hash = hashlib.sha256(normalized.encode()).hexdigest()
@@ -247,7 +263,7 @@ async def _fetch_feed(
 
         # Body extraction
         body = await _extract_body(session, url, entry)
-        if not body or len(body) < 100:
+        if not body or len(body) < MIN_BODY_LENGTH:
             continue
 
         # SimHash near-duplicate check
