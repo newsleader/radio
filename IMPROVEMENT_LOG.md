@@ -56,6 +56,18 @@
 - Cache restore title: '[캐시 복원]' → 'NewsLeader Radio'
 - mediaSession title updates in real-time from SSE
 
+### PR #14 — fix: skip aired articles on cache restore + fix simhash=0
+- mark_seen: add aired=True parameter, store in DB
+- restore_recent_cache: filter out url_hashes with aired=1
+- program_clock: pass aired=True to mark_seen after TTS
+- program_clock: fix simhash_value=0 hardcode → compute_simhash()
+
+### PR #15 — fix: mark restored files as aired immediately (hotfix)
+- On cache restore, immediately mark restored files as aired=1 in DB
+- Insert stub rows for cache files not yet in DB (pre-fix articles)
+- This prevents the same 10 articles from repeating on EVERY restart
+- Result: after this restart, cache_restore_empty on next boot (confirmed)
+
 ### PR #13 — fix: LLM max_tokens + QA tightening
 - LLM call: add max_tokens=4096 (prevents empty output on thinking models)
 - QA min word count: 80 → 120 (target is 170-210; 80 was too lenient)
