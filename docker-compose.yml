@@ -20,7 +20,7 @@ services:
       interval: 20s
       timeout: 5s
       retries: 3
-      start_period: 60s
+      start_period: 180s    # RSS fetch(40s) + LLM(25s) + TTS(25s) = ~90s; 180s gives headroom
     depends_on:
       - prometheus
 
@@ -33,7 +33,7 @@ services:
     environment:
       AUTOHEAL_CONTAINER_LABEL: all
       AUTOHEAL_INTERVAL: "15"
-      AUTOHEAL_START_PERIOD: "60"
+      AUTOHEAL_START_PERIOD: "180"
 
   # ── Cloudflare Tunnel: 라디오 스트림 ─────────────────────────────────────
   cloudflared:
