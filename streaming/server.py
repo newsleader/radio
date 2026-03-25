@@ -268,6 +268,8 @@ _PLAYER_HTML = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Newsleader — Live</title>
   <style>STYLE_PLACEHOLDER</style>
 </head>
@@ -292,7 +294,7 @@ _PLAYER_HTML = """<!DOCTYPE html>
         <span id="badge-txt">Connecting</span>
       </span>
     </div>
-    <audio class="player-audio" id="audio" controls autoplay>
+    <audio class="player-audio" id="audio" controls autoplay playsinline>
       <source src="/stream" type="audio/mpeg">
     </audio>
     <p class="player-status" id="pstatus">128 kbps · MP3 · Mono</p>
@@ -328,7 +330,8 @@ _PLAYER_HTML = """<!DOCTYPE html>
   var bufval  = document.getElementById('bufval');
   var RECONNECT_BASE = 3000, RECONNECT_MAX = 30000;
   var delay = RECONNECT_BASE, timer = null;
-  var BUFFER_MAX = 600;  // seconds, full watermark
+  var BUFFER_MAX = 600;
+  var currentTitle = 'NewsLeader Radio';
 
   function setLive(on) {
     dot.className = on ? 'dot pulse' : 'dot';
@@ -347,9 +350,45 @@ _PLAYER_HTML = """<!DOCTYPE html>
     }, delay);
   }
 
+  // iOS Media Session — keeps audio active on lock screen
+  function updateMediaSession(title) {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: title || 'NewsLeader Radio',
+      artist: '뉴스리더',
+      album: '24시간 국제·경제 뉴스',
+    });
+    navigator.mediaSession.playbackState = 'playing';
+    ['play','pause','stop'].forEach(function(a) {
+      try {
+        navigator.mediaSession.setActionHandler(a, function() {
+          if (a === 'pause' || a === 'stop') {
+            audio.pause();
+            navigator.mediaSession.playbackState = 'paused';
+          } else {
+            audio.play().catch(function(){});
+            navigator.mediaSession.playbackState = 'playing';
+          }
+        });
+      } catch(e) {}
+    });
+  }
+
+  // Keep session alive when screen locks (iOS visibility change)
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) return;
+    if (audio.paused && !audio.ended) {
+      audio.play().catch(function(){});
+    }
+  });
+
   audio.addEventListener('playing', function() {
     setLive(true);
     pstatus.textContent = '128 kbps · MP3 · Mono';
+    updateMediaSession(currentTitle);
+  });
+  audio.addEventListener('pause', function() {
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
   });
   audio.addEventListener('error',   function() { pstatus.textContent = 'Error'; reconnect(); });
   audio.addEventListener('stalled', function() { setLive(false); pstatus.textContent = 'Buffering...'; clearTimeout(timer); timer = setTimeout(reconnect, 8000); });
@@ -361,7 +400,11 @@ _PLAYER_HTML = """<!DOCTYPE html>
     es.onmessage = function(e) {
       try {
         var d = JSON.parse(e.data);
-        if (d.now_playing) np.textContent = d.now_playing;
+        if (d.now_playing) {
+          currentTitle = d.now_playing;
+          np.textContent = d.now_playing;
+          updateMediaSession(d.now_playing);
+        }
         if (typeof d.buffered_seconds !== 'undefined') {
           var pct = Math.min(d.buffered_seconds / BUFFER_MAX * 100, 100);
           bufbar.style.width = pct + '%';
@@ -385,6 +428,7 @@ _PLAYER_HTML = """<!DOCTYPE html>
     };
   }
   connectSSE();
+  updateMediaSession('NewsLeader Radio');
 })();
 </script>
 </body>
