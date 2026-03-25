@@ -99,3 +99,7 @@
 - 4-hour max backoff meant major feeds (Yonhap, Hani, MK, Korea Herald) stuck for hours after transient outage
 - 60min cap: faster recovery while still protecting against dead feeds
 - Reset 114 feeds from deep backoff so they retry on next pipeline run
+
+### PR #22 — fix: TCPConnector limit 30→80, FETCH_TIMEOUT 10s→15s
+- 169 feeds × 30 connection slots: last feeds waited 9+ sec in pool queue → exceeded 10s total timeout
+- 80 slots = at most 2 rounds → queue wait ≤3s → articles_fetched: 94 (was 0 due to all feeds timing out)
