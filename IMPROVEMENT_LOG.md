@@ -47,3 +47,11 @@
 - ₩ Korean won currency symbol
 - New acronyms: AI, ESG, FTA, G7, G20, EV, LNG, LPG
 - Acronyms sorted longest-first to prevent partial matches
+
+### PR #12 — fix: iOS background audio + UI cleanup
+- iOS screen sleep: audio continues via mediaSession API (lock screen controls)
+- playsinline attribute: prevents iOS fullscreen video takeover
+- apple-mobile-web-app-capable meta tags for PWA-like behavior
+- visibilitychange: resumes audio when screen unlocks
+- Cache restore title: '[캐시 복원]' → 'NewsLeader Radio'
+- mediaSession title updates in real-time from SSE
