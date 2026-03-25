@@ -128,6 +128,16 @@
 - 900s FULL: pipeline builds 5 more minutes of buffer headroom → after 10min drain, ~300s remains (above BUFFER_LOW)
 - Eliminates the 154s near-critical event while keeping content fresh (900s = 15min max age)
 
+### PR #30 — fix: fallback count 4→5 to eliminate 2s silence gap between critical events
+- 27.8s (count=4) < 30s watchdog interval → 2.2s silence every 30s during cold startup
+- 35.2s (count=5, round-robin wraps 0→1→2→3→0) > 30s → no silence between critical cycles
+- Buffer at next critical check = 35.2 - 30 = 5.2s (small but non-zero) → no audible gap
+
+### PR #29 — fix: fallback files to cache/fallback/ subdir + title sidecar on restore
+- PR #28 bug: fallback_N.mp3 in cache root → picked up by restore_recent_cache glob → 7-8s placeholder audio played as "NewsLeader Radio" on restart
+- Fix: cache/fallback/N.mp3 subdirectory not matched by cache/*.mp3 glob
+- Also: program_clock writes cache/{cache_key}.title alongside each MP3; restore_from_cache reads title sidecar → restored articles show proper Korean topic name in ICY metadata
+
 ### PR #28 — fix: persist fallback audio to disk + critical count 2→4
 - Fallback pool generation took ~40s (4 TTS calls) — watchdog_critical at T=30s and T=60s fired with empty pool, enqueue_fallback() silently returned 0 (no coverage)
 - Now saves cache/fallback_N.mp3 after first TTS generation; subsequent restarts load from disk in <1ms
