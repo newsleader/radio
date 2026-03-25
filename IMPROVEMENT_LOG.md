@@ -55,3 +55,8 @@
 - visibilitychange: resumes audio when screen unlocks
 - Cache restore title: '[캐시 복원]' → 'NewsLeader Radio'
 - mediaSession title updates in real-time from SSE
+
+### PR #13 — fix: LLM max_tokens + QA tightening
+- LLM call: add max_tokens=4096 (prevents empty output on thinking models)
+- QA min word count: 80 → 120 (target is 170-210; 80 was too lenient)
+- QA: add bracket check — (), [], 【】 banned by prompt, now enforced by QA
