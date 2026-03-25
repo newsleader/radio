@@ -56,14 +56,18 @@ _ACRONYM_MAP = {
     # 지정학
     'UN': '유엔', 'NATO': '나토', 'WHO': '세계보건기구',
     'WFP': '세계식량계획', 'IAEA': '국제원자력기구',
-    # 기술
-    'ML': '머신러닝', 'API': '에이피아이',
+    # 기술/기타
+    'ML': '머신러닝', 'AI': '에이아이', 'API': '에이피아이',
     'GPU': '지피유', 'CPU': '씨피유',
+    'ESG': '이에스지', 'FTA': '자유무역협정',
+    'G7': '지세븐', 'G20': '지이십',
+    'EV': '전기차', 'LNG': '액화천연가스', 'LPG': '액화석유가스',
 }
 
 
 def _preprocess_for_tts(text: str) -> str:
     """Convert English numbers/units/acronyms to Korean-readable forms."""
+    # Currency with scale words
     text = re.sub(r'\$(\d+(?:\.\d+)?)\s*[Tt]rillion', lambda m: f"{m.group(1)}조 달러", text)
     text = re.sub(r'\$(\d+(?:\.\d+)?)\s*[Bb]illion', lambda m: f"{m.group(1)}억 달러", text)
     text = re.sub(r'\$(\d+(?:\.\d+)?)\s*[Mm]illion', lambda m: f"{m.group(1)}백만 달러", text)
@@ -71,11 +75,28 @@ def _preprocess_for_tts(text: str) -> str:
     text = re.sub(r'€(\d+(?:\.\d+)?)', lambda m: f"{m.group(1)}유로", text)
     text = re.sub(r'£(\d+(?:\.\d+)?)', lambda m: f"{m.group(1)}파운드", text)
     text = re.sub(r'¥(\d+(?:\.\d+)?)', lambda m: f"{m.group(1)}엔", text)
+    text = re.sub(r'₩(\d+(?:,\d+)*(?:\.\d+)?)', lambda m: f"{m.group(1)}원", text)
+    # Distance
     text = re.sub(r'(\d+(?:\.\d+)?)\s*km\b', lambda m: f"{m.group(1)}킬로미터", text)
+    text = re.sub(r'(\d+(?:\.\d+)?)\s*miles?\b', lambda m: f"{m.group(1)}마일", text, flags=re.IGNORECASE)
+    text = re.sub(r'(\d+(?:\.\d+)?)\s*m\b(?![\w가-힣])', lambda m: f"{m.group(1)}미터", text)
+    # Weight / mass
     text = re.sub(r'(\d+(?:\.\d+)?)\s*kg\b', lambda m: f"{m.group(1)}킬로그램", text)
-    text = re.sub(r'(\d+(?:\.\d+)?)\s*MW\b', lambda m: f"{m.group(1)}메가와트", text)
+    text = re.sub(r'(\d+(?:\.\d+)?)\s*lbs?\b', lambda m: f"{m.group(1)}파운드", text, flags=re.IGNORECASE)
+    text = re.sub(r'(\d+(?:\.\d+)?)\s*tons?\b', lambda m: f"{m.group(1)}톤", text, flags=re.IGNORECASE)
+    # Power / energy
     text = re.sub(r'(\d+(?:\.\d+)?)\s*GW\b', lambda m: f"{m.group(1)}기가와트", text)
-    for abbr, korean in _ACRONYM_MAP.items():
+    text = re.sub(r'(\d+(?:\.\d+)?)\s*MW\b', lambda m: f"{m.group(1)}메가와트", text)
+    text = re.sub(r'(\d+(?:\.\d+)?)\s*kW\b', lambda m: f"{m.group(1)}킬로와트", text)
+    # Temperature
+    text = re.sub(r'(\-?\d+(?:\.\d+)?)\s*°C\b', lambda m: f"섭씨 {m.group(1)}도", text)
+    text = re.sub(r'(\-?\d+(?:\.\d+)?)\s*°F\b', lambda m: f"화씨 {m.group(1)}도", text)
+    # Percentage and basis points (order matters: bp before %)
+    text = re.sub(r'(\d+(?:\.\d+)?)\s*pp\b', lambda m: f"{m.group(1)}퍼센트포인트", text)
+    text = re.sub(r'(\d+(?:\.\d+)?)\s*bps?\b', lambda m: f"{m.group(1)}베이시스포인트", text, flags=re.IGNORECASE)
+    text = re.sub(r'(\d+(?:\.\d+)?)%', lambda m: f"{m.group(1)}퍼센트", text)
+    # Acronyms (longest first to avoid partial matches)
+    for abbr, korean in sorted(_ACRONYM_MAP.items(), key=lambda x: -len(x[0])):
         text = re.sub(rf'\b{re.escape(abbr)}\b', korean, text)
     return text
 
