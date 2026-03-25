@@ -31,7 +31,7 @@ log = structlog.get_logger(__name__)
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
-FETCH_TIMEOUT = aiohttp.ClientTimeout(total=15)    # 169 feeds × pool wait + network; 10s was too short
+FETCH_TIMEOUT = aiohttp.ClientTimeout(total=20)    # 24 feeds have avg_latency 15-27s; 15s was too short
 ARTICLE_TIMEOUT = aiohttp.ClientTimeout(total=12)  # article body fetch
 MAX_ARTICLES_PER_FEED = 8
 MAX_ARTICLE_AGE_HOURS = 8
