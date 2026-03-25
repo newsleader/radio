@@ -30,7 +30,6 @@ log = structlog.get_logger(__name__)
 
 _GDELT_BASE = "https://api.gdeltproject.org/api/v2/doc/doc"
 _LAST_FETCH: float = 0.0
-_MIN_INTERVAL = 900.0   # 15 minutes between GDELT fetches (rate limit 회복)
 
 # Queries to search on GDELT — diverse global coverage for Korean listeners
 # GDELT 문법: OR 표현식은 반드시 괄호로 감싸야 함
@@ -78,6 +77,9 @@ _GDELT_QUERIES = [
 _FETCH_TIMEOUT = aiohttp.ClientTimeout(total=20)
 
 
+_GDELT_RATE_LIMITED = False  # set True on 429; reset each fetch_gdelt_articles() call
+
+
 async def _fetch_gdelt_query(
     session: aiohttp.ClientSession,
     query: str,
@@ -85,6 +87,7 @@ async def _fetch_gdelt_query(
     max_records: int = 10,
 ) -> list[Article]:
     """Fetch articles from GDELT for a single query."""
+    global _GDELT_RATE_LIMITED
     params = {
         "query": query,
         "mode": "ArtList",
@@ -101,6 +104,7 @@ async def _fetch_gdelt_query(
         ) as resp:
             if resp.status == 429:
                 log.warning("gdelt_rate_limited_429", query=query[:60])
+                _GDELT_RATE_LIMITED = True
                 return []
             if resp.status != 200:
                 log.debug("gdelt_non_200", status=resp.status, query=query[:60])
@@ -137,21 +141,24 @@ async def _fetch_gdelt_query(
 
 
 _QUERY_CURSOR = 0  # 순환 커서 — 매 실행마다 다른 쿼리 그룹 사용
+_MIN_INTERVAL = 1800.0   # 30 minutes between GDELT fetches (was 15, 429 too common)
+
 
 async def fetch_gdelt_articles() -> list[Article]:
     """
     Fetch trending global news from GDELT relevant to Korean listeners.
-    Rate-limited to once every 15 minutes.
+    Rate-limited to once every 30 minutes.
     5개 쿼리씩 순차 실행 (GDELT rate limit: 1 req/5s 준수).
-    19개 쿼리를 순환하여 매 실행마다 다른 주제 커버.
+    쿼리가 429를 반환하면 즉시 중단 (나머지 쿼리 스킵).
     """
-    global _LAST_FETCH, _QUERY_CURSOR
+    global _LAST_FETCH, _QUERY_CURSOR, _GDELT_RATE_LIMITED
     now = time.monotonic()
     if now - _LAST_FETCH < _MIN_INTERVAL:
         log.debug("gdelt_skipped_rate_limit")
         return []
 
     _LAST_FETCH = now
+    _GDELT_RATE_LIMITED = False  # reset for this batch
 
     # 5개씩 순환 선택
     BATCH = 5
@@ -167,6 +174,9 @@ async def fetch_gdelt_articles() -> list[Article]:
     connector = aiohttp.TCPConnector(limit=1)
     async with aiohttp.ClientSession(connector=connector) as session:
         for i, query in enumerate(selected):
+            if _GDELT_RATE_LIMITED:
+                log.debug("gdelt_batch_aborted_rate_limit", remaining=BATCH - i)
+                break
             if i > 0:
                 await asyncio.sleep(6)  # GDELT rate limit: 1 req/5s 준수
             result = await _fetch_gdelt_query(session, query)
