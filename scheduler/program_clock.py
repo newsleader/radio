@@ -99,8 +99,13 @@ def run_content_pipeline(emergency: bool = False) -> None:
         # Fetch from RSS feeds + GDELT (merged)
         with trace_span("pipeline.fetch"):
             rss_articles = asyncio.run(fetch_new_articles())
-            # Skip GDELT when buffer is low — 5 queries × ~20s = ~100s wasted while queue drains
-            gdelt_skip = emergency or (audio_queue.buffered_seconds < config.BUFFER_LOW)
+            # Skip GDELT when buffer is low OR RSS already gives enough articles
+            # GDELT: 5 queries × ~20s = ~100s, consistently returns 0 articles when RSS has 30+
+            gdelt_skip = (
+                emergency
+                or (audio_queue.buffered_seconds < config.BUFFER_LOW)
+                or (len(rss_articles) >= 30)
+            )
             gdelt_articles = [] if gdelt_skip else asyncio.run(fetch_gdelt_articles())
         articles = rss_articles + gdelt_articles
         increment("articles_fetched", len(articles))
