@@ -257,6 +257,32 @@ def _call_llm(prompt: str, article: Article) -> Optional[str]:
         return None
 
 
+def _build_retry_feedback(issues: list, failed_script: str) -> str:
+    """Build an appended prompt section that tells the LLM what went wrong."""
+    parts = ["\n\n[이전 시도 QA 실패 — 다시 작성하세요]"]
+    word_count = len(failed_script.split())
+    for issue in issues:
+        if "WORD_COUNT" in issue:
+            parts.append(
+                f"- 어절 수 부족: 이전 대본은 {word_count}어절. "
+                "반드시 170어절 이상 작성하세요. 배경·원인·인용·전망을 충분히 서술하세요."
+            )
+        elif issue == "CLOSING_MISSING":
+            parts.append(
+                "- 마무리 문구 누락: 반드시 '이상으로 [구체적 주제] 소식이었습니다.'로 끝내세요."
+            )
+        elif "LIST_FORMAT" in issue:
+            parts.append(
+                "- 나열 구조 금지 위반: '첫째/둘째/셋째' 등 번호 나열이 감지되었습니다. "
+                "각 항목을 독립 문장으로 서술하세요."
+            )
+        elif issue == "OPENING_WRONG":
+            parts.append(
+                "- 첫 문장 오류: 반드시 '다음 소식입니다.'로 시작하세요."
+            )
+    return "\n".join(parts)
+
+
 def generate_script(article: Article) -> Optional[tuple]:
     """
     Generate a Korean radio TTS script via the configured LLM.
@@ -283,9 +309,10 @@ def generate_script(article: Article) -> Optional[tuple]:
 
     script = None
     meta_topic: Optional[str] = None
+    current_prompt = prompt
 
     for attempt in range(2):   # up to 2 LLM attempts
-        raw = _call_llm(prompt, article)
+        raw = _call_llm(current_prompt, article)
         if not raw:
             break
 
@@ -323,7 +350,9 @@ def generate_script(article: Article) -> Optional[tuple]:
             increment("scripts_qa_failed")
             if attempt < 1:
                 log.info("script_retry", title=article.title[:60])
-                continue   # retry with same prompt
+                # Append QA feedback to prompt so the model corrects the specific issue
+                current_prompt = prompt + _build_retry_feedback(qa.issues, script_text)
+                continue
             # QA still failing after retry
             # If script_text looks like raw JSON, try extracting "script" field directly
             if script_text.lstrip().startswith(('```', '{')):
