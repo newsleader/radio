@@ -59,7 +59,7 @@ def qa_script(script: str, source_body: str = "") -> QAResult:
         issues.append(f"OPENING_WRONG: '{script[:30]}'")
 
     # 2. Closing phrase
-    if not re.search(r'이상으로.{1,30}소식이었습니다', script):
+    if not re.search(r'이상으로.{1,60}소식이었습니다', script):
         issues.append("CLOSING_MISSING")
 
     # 3. Word count (target 170-210 어절; < 120 is clearly a failure)
