@@ -284,7 +284,7 @@ async def fetch_new_articles() -> List[Article]:
         for d in domains:
             limiters[d] = _AsyncLimiter(max_rate=1, time_period=2.0)
 
-    connector = aiohttp.TCPConnector(limit=80, ssl=False)  # ~half of 169 feeds; was 30
+    connector = aiohttp.TCPConnector(limit=len(RSS_FEEDS), ssl=False)  # 1 slot per feed = 0 pool wait; was 80
     async with aiohttp.ClientSession(connector=connector) as session:
         tasks = [
             _fetch_feed(session, url, name, limiters)
