@@ -33,8 +33,8 @@ log = structlog.get_logger(__name__)
 
 FETCH_TIMEOUT = aiohttp.ClientTimeout(total=20)
 ARTICLE_TIMEOUT = aiohttp.ClientTimeout(total=15)
-MAX_ARTICLES_PER_FEED = 5
-MAX_ARTICLE_AGE_HOURS = 24
+MAX_ARTICLES_PER_FEED = 8
+MAX_ARTICLE_AGE_HOURS = 8
 
 _USER_AGENT = "Mozilla/5.0 (compatible; NewsLeader/1.0; +https://github.com/newsleader)"
 

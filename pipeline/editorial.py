@@ -157,7 +157,8 @@ def score_article(article, cluster_size: int = 1) -> float:
     """
     score = 0.0
 
-    # 1. Recency (0–3 points, linear decay over 2 hours)
+    # 1. Recency (0–3 points, exponential decay over 4 hours)
+    #    Half-life ~90 min: articles published 90 min ago score ~1.5 pts, 3h ago ~0.75 pts
     if article.published:
         try:
             from email.utils import parsedate_to_datetime
@@ -165,7 +166,7 @@ def score_article(article, cluster_size: int = 1) -> float:
             if pub.tzinfo is None:
                 pub = pub.replace(tzinfo=timezone.utc)
             age_min = (datetime.now(timezone.utc) - pub).total_seconds() / 60
-            score += max(0.0, 1.0 - age_min / 120.0) * 3.0
+            score += 3.0 * math.exp(-age_min / 90.0)
         except Exception:
             pass
 
