@@ -62,10 +62,10 @@ def qa_script(script: str, source_body: str = "") -> QAResult:
     if not re.search(r'이상으로.{1,30}소식이었습니다', script):
         issues.append("CLOSING_MISSING")
 
-    # 3. Word count
+    # 3. Word count (target 170-210 어절; < 120 is clearly a failure)
     wc = len(script.split())
-    if wc < 80:
-        issues.append(f"WORD_COUNT_{wc}_too_short_min_80")
+    if wc < 120:
+        issues.append(f"WORD_COUNT_{wc}_too_short_min_120")
 
     # 4. Detect JSON extraction failure
     _JSON_KEYWORDS = {"script", "topic", "word_count", "false", "true", "null"}
@@ -86,5 +86,9 @@ def qa_script(script: str, source_body: str = "") -> QAResult:
     list_markers = re.findall(r'첫째|둘째|셋째|넷째|①|②|③|④|△\s|\d+\.\s', script)
     if list_markers:
         issues.append(f"LIST_FORMAT: {list_markers[:3]}")
+
+    # 8. No brackets (prompt bans them; TTS reads them awkwardly)
+    if re.search(r'[()【】\[\]{}「」]', script):
+        issues.append("BRACKETS_FOUND")
 
     return QAResult(passed=len(issues) == 0, issues=issues)

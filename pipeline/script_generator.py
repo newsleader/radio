@@ -100,6 +100,7 @@ def _call_llm_api(prompt: str) -> str:
             {"role": "user",   "content": prompt},
         ],
         temperature=0.75,
+        max_tokens=4096,   # required for thinking models (qwen3.5 etc.) — thinking eats tokens first
         stream=True,
     )
     chunks = []
