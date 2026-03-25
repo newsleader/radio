@@ -16,6 +16,12 @@ load_dotenv()
 # ── Logging ──────────────────────────────────────────────────────────────────
 log_level = getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper(), logging.INFO)
 logging.basicConfig(format="%(message)s", stream=sys.stdout, level=log_level)
+
+# Suppress verbose third-party loggers that produce noise at INFO/WARNING level:
+# - trafilatura: "discarding data: <url>", "empty HTML tree: None" on every failed extract
+# - apscheduler: "Job X executed successfully" every 30s (watchdog runs = 2/min)
+logging.getLogger("trafilatura").setLevel(logging.ERROR)
+logging.getLogger("apscheduler").setLevel(logging.WARNING)
 structlog.configure(
     processors=[
         structlog.stdlib.add_log_level,
