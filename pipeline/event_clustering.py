@@ -71,7 +71,7 @@ def _cosine(a: dict[str, float], b: dict[str, float]) -> float:
 
 def cluster_articles(
     articles: list,
-    threshold: float = 0.45,
+    threshold: float = 0.30,
     max_cluster_size: int = 10,
 ) -> list[EventCluster]:
     """

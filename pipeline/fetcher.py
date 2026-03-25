@@ -38,16 +38,11 @@ MAX_ARTICLE_AGE_HOURS = 8
 
 _USER_AGENT = "Mozilla/5.0 (compatible; NewsLeader/1.0; +https://github.com/newsleader)"
 
-# Global per-domain rate limiters: max 1 request per 2 seconds per domain
+# Per-domain rate limiters are created fresh per event-loop invocation (see fetch_new_articles).
+# Global dict is intentionally NOT used — AsyncLimiter binds to the event loop it's created on,
+# and asyncio.run() creates a new loop each call, causing "re-used across loops" warnings.
 try:
-    from aiolimiter import AsyncLimiter
-    _domain_limiters: dict[str, AsyncLimiter] = {}
-
-    def _get_limiter(domain: str) -> AsyncLimiter:
-        if domain not in _domain_limiters:
-            _domain_limiters[domain] = AsyncLimiter(max_rate=1, time_period=2.0)
-        return _domain_limiters[domain]
-
+    from aiolimiter import AsyncLimiter as _AsyncLimiter
     _HAS_LIMITER = True
 except ImportError:
     _HAS_LIMITER = False
@@ -130,22 +125,12 @@ async def _extract_body(session: aiohttp.ClientSession, url: str, entry: Any) ->
 
     # 2. Try HTTP fetch + trafilatura
     try:
-        domain = urlparse(url).netloc
-        if _HAS_LIMITER:
-            async with _get_limiter(domain):
-                async with session.get(
-                    url, timeout=ARTICLE_TIMEOUT,
-                    headers={"User-Agent": _USER_AGENT},
-                    ssl=False,
-                ) as resp:
-                    html = await resp.text(errors="replace")
-        else:
-            async with session.get(
-                url, timeout=ARTICLE_TIMEOUT,
-                headers={"User-Agent": _USER_AGENT},
-                ssl=False,
-            ) as resp:
-                html = await resp.text(errors="replace")
+        async with session.get(
+            url, timeout=ARTICLE_TIMEOUT,
+            headers={"User-Agent": _USER_AGENT},
+            ssl=False,
+        ) as resp:
+            html = await resp.text(errors="replace")
 
         import trafilatura
         text = trafilatura.extract(html, include_comments=False, include_tables=False)
@@ -169,6 +154,7 @@ async def _fetch_feed(
     session: aiohttp.ClientSession,
     feed_url: str,
     source_name: str,
+    limiters: dict,
 ) -> List[Article]:
     """Fetch one RSS feed with conditional GET and health tracking."""
     if not article_store.should_check_feed(feed_url):
@@ -185,8 +171,9 @@ async def _fetch_feed(
     t0 = time.monotonic()
     try:
         domain = urlparse(feed_url).netloc
-        if _HAS_LIMITER:
-            async with _get_limiter(domain):
+        # Use per-loop limiters passed in from fetch_new_articles
+        if _HAS_LIMITER and domain in limiters:
+            async with limiters[domain]:
                 async with session.get(
                     feed_url, timeout=FETCH_TIMEOUT, headers=headers, ssl=False
                 ) as resp:
@@ -286,10 +273,17 @@ async def _fetch_feed(
 
 async def fetch_new_articles() -> List[Article]:
     """Fetch all configured RSS feeds in parallel and return new articles."""
+    # Build per-domain limiters fresh for THIS event loop (AsyncLimiter binds to its loop)
+    limiters: dict = {}
+    if _HAS_LIMITER:
+        domains = {urlparse(url).netloc for _, url in RSS_FEEDS}
+        for d in domains:
+            limiters[d] = _AsyncLimiter(max_rate=1, time_period=2.0)
+
     connector = aiohttp.TCPConnector(limit=15, ssl=False)
     async with aiohttp.ClientSession(connector=connector) as session:
         tasks = [
-            _fetch_feed(session, url, name)
+            _fetch_feed(session, url, name, limiters)
             for name, url in RSS_FEEDS
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
