@@ -347,6 +347,7 @@ def generate_script(article: Article) -> Optional[str]:
 
 
 def generate_station_id() -> str:
+    import random
     from datetime import datetime, timezone, timedelta
     KST = timezone(timedelta(hours=9))
     now = datetime.now(KST)
@@ -357,10 +358,28 @@ def generate_station_id() -> str:
     h = hour % 12 or 12
     time_str = f"{ampm} {h}시" + (f" {minute}분" if minute else "")
 
-    return (
-        f"지금은 {time_str}입니다. "
-        f"뉴스리더 라디오를 청취해 주셔서 감사합니다. "
-        f"저희는 글로벌 거시경제와 IT, 금융 분야의 최신 뉴스를 "
-        f"24시간 쉬지 않고 전해드립니다. "
-        f"잠시 후 더 많은 소식을 전해드리겠습니다."
-    )
+    variants = [
+        (
+            f"지금은 {time_str}입니다. "
+            f"뉴스리더 라디오를 청취해 주셔서 감사합니다. "
+            f"경제, 기술, 국제 뉴스를 24시간 전해드리는 뉴스리더입니다. "
+            f"잠시 후 계속해서 최신 소식을 전해드리겠습니다."
+        ),
+        (
+            f"뉴스리더 라디오입니다. 현재 시각은 {time_str}입니다. "
+            f"저희는 세계 각지의 뉴스를 실시간으로 전해드리고 있습니다. "
+            f"금융, 기술, 지정학 분야의 심층 보도를 계속해서 들려드리겠습니다."
+        ),
+        (
+            f"{time_str}에 함께해 주셔서 감사합니다. "
+            f"지금 들으시는 방송은 뉴스리더 라디오입니다. "
+            f"글로벌 경제와 IT 트렌드를 중심으로 24시간 뉴스를 방송합니다. "
+            f"청취해 주셔서 감사드립니다."
+        ),
+        (
+            f"뉴스리더입니다. 지금은 {time_str}입니다. "
+            f"국내외 주요 소식을 빠르고 정확하게 전달하는 뉴스리더 라디오. "
+            f"잠시 후 최신 뉴스로 다시 찾아뵙겠습니다."
+        ),
+    ]
+    return random.choice(variants)
