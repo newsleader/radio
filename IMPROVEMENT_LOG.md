@@ -169,6 +169,11 @@
 - count=4 at critical: enqueues all 4 scripts (~28s total) vs 2 scripts (~14s)
 - Result: on restarts with empty queue, fallback audio is immediately available and provides ~28s of coverage per critical event
 
+### PR #35 — fix: pre-filter non-news titles + raise body minimum 100→300 chars
+- Articles like [투자운세] horoscopes, software changelogs (datasette-llm 0.1a1), event listings (Demo Day Dates) reached LLM and caused WORD_COUNT/CLOSING_MISSING QA failures
+- _NON_NEWS_TITLE_RE: regex check before body HTTP fetch (saves round-trip) — blocks 운세/점성/별자리, package vX.Yaz release titles, changelog keyword, demo day dates
+- MIN_BODY_LENGTH: 100 → 300 chars (120-word scripts need ~400 chars of source; 100 was too lenient)
+
 ### PR #23 — fix: remove 39 dead feeds (169→130)
 - 39 feeds had last_success_at=NULL (never worked from Docker environment)
 - Removed: Reddit r/worldnews|technology|science (block RSS without auth), FeedBurner URLs (securityweek, zerohedge — deprecated), SCMP Technology+Asia, Korea Herald World, KBS World, Google AI Blog, Google Project Zero, HBR, Hacker News (hnrss.org), IEEE Spectrum, Tom's Hardware, Dark Reading, SecurityWeek, Middle East Eye, 데일리시큐, AI News, Radio Free Asia, 코인데스크 코리아, The Block, The Batch (deeplearning.ai), 이데일리 (×2), 머니투데이, 서울경제, SBS뉴스, 조선비즈, 연합뉴스 사회, 기획재정부, 금융위원회, 공정거래위원회, WHO News, Carbon Brief, NBER, St. Louis Fed, Investopedia, Anthropic News
