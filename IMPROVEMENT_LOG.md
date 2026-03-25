@@ -169,6 +169,15 @@
 - count=4 at critical: enqueues all 4 scripts (~28s total) vs 2 scripts (~14s)
 - Result: on restarts with empty queue, fallback audio is immediately available and provides ~28s of coverage per critical event
 
+### PR #37 — fix: QA-feedback retry prompt + filter Japanese earthquake alerts
+- LLM retry on QA failure now appends specific correction text (was same prompt → same failure)
+- _build_retry_feedback(): WORD_COUNT → current count + add more context, CLOSING_MISSING → exact phrase, LIST_FORMAT → identifies pattern, OPENING_WRONG → reminder
+- 【地震情報】 added to _NON_NEWS_TITLE_RE: NHK earthquake alerts (M3, location+magnitude only) always fail WORD_COUNT (95-106 words), not relevant to Korean audience
+
+### PR #36 — fix: tighten breaking news keywords to reduce false positives
+- 부상 → 부상자|부상을 (rise/emergence 부상 was triggering for tech "클라우드 네이티브 신원 관리 부상")
+- 선언 removed (too broad: product launches use this), 비상 → 비상사태 (state of emergency specifically)
+
 ### PR #35 — fix: pre-filter non-news titles + raise body minimum 100→300 chars
 - Articles like [투자운세] horoscopes, software changelogs (datasette-llm 0.1a1), event listings (Demo Day Dates) reached LLM and caused WORD_COUNT/CLOSING_MISSING QA failures
 - _NON_NEWS_TITLE_RE: regex check before body HTTP fetch (saves round-trip) — blocks 운세/점성/별자리, package vX.Yaz release titles, changelog keyword, demo day dates
