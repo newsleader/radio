@@ -1,0 +1,96 @@
+{
+  "title": "NewsLeader Radio",
+  "uid": "newsleader",
+  "schemaVersion": 36,
+  "version": 1,
+  "refresh": "15s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Active Listeners",
+      "type": "stat",
+      "gridPos": {"x": 0, "y": 0, "w": 4, "h": 4},
+      "targets": [{"expr": "newsleader_listeners_total", "legendFormat": "Listeners"}],
+      "options": {"colorMode": "value", "graphMode": "area"}
+    },
+    {
+      "id": 2,
+      "title": "Queue Buffer (seconds)",
+      "type": "stat",
+      "gridPos": {"x": 4, "y": 0, "w": 4, "h": 4},
+      "targets": [{"expr": "newsleader_queue_seconds", "legendFormat": "Queue"}],
+      "options": {"colorMode": "value", "graphMode": "area"},
+      "fieldConfig": {"defaults": {"unit": "s", "thresholds": {"steps": [
+        {"color": "red", "value": 0},
+        {"color": "yellow", "value": 60},
+        {"color": "green", "value": 180}
+      ]}}}
+    },
+    {
+      "id": 3,
+      "title": "Uptime",
+      "type": "stat",
+      "gridPos": {"x": 8, "y": 0, "w": 4, "h": 4},
+      "targets": [{"expr": "newsleader_uptime_seconds", "legendFormat": "Uptime"}],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "id": 4,
+      "title": "Articles Fetched (total)",
+      "type": "stat",
+      "gridPos": {"x": 12, "y": 0, "w": 3, "h": 4},
+      "targets": [{"expr": "newsleader_articles_fetched_total", "legendFormat": "Articles"}]
+    },
+    {
+      "id": 5,
+      "title": "Scripts Generated (total)",
+      "type": "stat",
+      "gridPos": {"x": 15, "y": 0, "w": 3, "h": 4},
+      "targets": [{"expr": "newsleader_scripts_generated_total", "legendFormat": "Scripts"}]
+    },
+    {
+      "id": 6,
+      "title": "TTS Completed (total)",
+      "type": "stat",
+      "gridPos": {"x": 18, "y": 0, "w": 3, "h": 4},
+      "targets": [{"expr": "newsleader_tts_completed_total", "legendFormat": "TTS"}]
+    },
+    {
+      "id": 7,
+      "title": "Queue Buffer Over Time",
+      "type": "timeseries",
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+      "targets": [{"expr": "newsleader_queue_seconds", "legendFormat": "Buffer (s)"}],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "id": 8,
+      "title": "Listeners Over Time",
+      "type": "timeseries",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+      "targets": [{"expr": "newsleader_listeners_total", "legendFormat": "Listeners"}]
+    },
+    {
+      "id": 9,
+      "title": "Error Rate",
+      "type": "timeseries",
+      "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+      "targets": [
+        {"expr": "rate(newsleader_tts_errors_total[5m])", "legendFormat": "TTS Errors/s"},
+        {"expr": "rate(newsleader_llm_errors_total[5m])", "legendFormat": "LLM Errors/s"},
+        {"expr": "rate(newsleader_pipeline_errors_total[5m])", "legendFormat": "Pipeline Errors/s"}
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Pipeline Throughput",
+      "type": "timeseries",
+      "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+      "targets": [
+        {"expr": "rate(newsleader_articles_fetched_total[15m])*60", "legendFormat": "Articles/min"},
+        {"expr": "rate(newsleader_scripts_generated_total[15m])*60", "legendFormat": "Scripts/min"},
+        {"expr": "rate(newsleader_tts_completed_total[15m])*60", "legendFormat": "TTS/min"}
+      ]
+    }
+  ]
+}

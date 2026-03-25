@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: NewsLeader
+    folder: NewsLeader
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

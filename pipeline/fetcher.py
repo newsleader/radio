@@ -1,0 +1,305 @@
+"""
+Async RSS fetcher with deduplication and health tracking.
+
+Improvements over baseline:
+  - fastfeedparser (25-50x faster than feedparser, same API)
+  - URL normalization (strip UTM params) before hashing
+  - RSS content:encoded check before HTTP body fetch
+  - ETag / If-Modified-Since conditional GET (304 = skip)
+  - Per-domain rate limiting (aiolimiter) to avoid IP blocks
+  - Feed health tracking with exponential backoff
+  - SimHash near-duplicate detection
+  - Realistic User-Agent string
+"""
+import asyncio
+import hashlib
+import time
+from dataclasses import dataclass
+from datetime import datetime, timezone, timedelta
+from email.utils import parsedate_to_datetime
+from typing import Any, List, Optional
+from urllib.parse import urlparse
+
+import aiohttp
+import structlog
+
+from storage.article_store import article_store, normalize_url, compute_simhash
+from pipeline.embedder import embed
+from content.feeds import RSS_FEEDS
+
+log = structlog.get_logger(__name__)
+
+# ── Constants ────────────────────────────────────────────────────────────────
+
+FETCH_TIMEOUT = aiohttp.ClientTimeout(total=20)
+ARTICLE_TIMEOUT = aiohttp.ClientTimeout(total=15)
+MAX_ARTICLES_PER_FEED = 5
+MAX_ARTICLE_AGE_HOURS = 24
+
+_USER_AGENT = "Mozilla/5.0 (compatible; NewsLeader/1.0; +https://github.com/newsleader)"
+
+# Global per-domain rate limiters: max 1 request per 2 seconds per domain
+try:
+    from aiolimiter import AsyncLimiter
+    _domain_limiters: dict[str, AsyncLimiter] = {}
+
+    def _get_limiter(domain: str) -> AsyncLimiter:
+        if domain not in _domain_limiters:
+            _domain_limiters[domain] = AsyncLimiter(max_rate=1, time_period=2.0)
+        return _domain_limiters[domain]
+
+    _HAS_LIMITER = True
+except ImportError:
+    _HAS_LIMITER = False
+    log.warning("aiolimiter_not_installed", msg="per-domain rate limiting disabled")
+
+
+@dataclass
+class Article:
+    url: str
+    title: str
+    source: str
+    body: str
+    published: Optional[str] = None
+
+
+# ── Feed parsing ─────────────────────────────────────────────────────────────
+
+def _parse_feed(raw: str):
+    """Parse RSS/Atom feed, prefer fastfeedparser then feedparser as fallback."""
+    try:
+        import fastfeedparser
+        return fastfeedparser.parse(raw)
+    except ImportError:
+        pass
+    except Exception:
+        pass
+    import feedparser
+    return feedparser.parse(raw)
+
+
+# ── Freshness check ──────────────────────────────────────────────────────────
+
+def _is_fresh(entry: Any) -> bool:
+    raw = (
+        getattr(entry, "published", None)
+        or getattr(entry, "updated", None)
+        or getattr(entry, "created", None)
+    )
+    if not raw:
+        return True
+    try:
+        pub = parsedate_to_datetime(raw)
+        if pub.tzinfo is None:
+            pub = pub.replace(tzinfo=timezone.utc)
+        return (datetime.now(timezone.utc) - pub) <= timedelta(hours=MAX_ARTICLE_AGE_HOURS)
+    except Exception:
+        return True
+
+
+# ── Body extraction ──────────────────────────────────────────────────────────
+
+def _get_content_encoded(entry: Any) -> str:
+    """Extract full article text from RSS content:encoded field."""
+    content_list = getattr(entry, "content", [])
+    if content_list:
+        val = content_list[0].get("value", "") if isinstance(content_list[0], dict) \
+              else getattr(content_list[0], "value", "")
+        if val and len(val) > 200:
+            try:
+                import trafilatura
+                text = trafilatura.extract(val, include_comments=False, include_tables=False)
+                if text and len(text) > 150:
+                    return text[:3000]
+            except Exception:
+                pass
+            # Strip HTML tags
+            import re
+            clean = re.sub(r"<[^>]+>", " ", val)
+            clean = re.sub(r"\s+", " ", clean).strip()
+            if len(clean) > 150:
+                return clean[:3000]
+    return ""
+
+
+async def _extract_body(session: aiohttp.ClientSession, url: str, entry: Any) -> str:
+    # 1. Try RSS content:encoded (no HTTP request needed)
+    inline = _get_content_encoded(entry)
+    if inline:
+        return inline
+
+    # 2. Try HTTP fetch + trafilatura
+    try:
+        domain = urlparse(url).netloc
+        if _HAS_LIMITER:
+            async with _get_limiter(domain):
+                async with session.get(
+                    url, timeout=ARTICLE_TIMEOUT,
+                    headers={"User-Agent": _USER_AGENT},
+                    ssl=False,
+                ) as resp:
+                    html = await resp.text(errors="replace")
+        else:
+            async with session.get(
+                url, timeout=ARTICLE_TIMEOUT,
+                headers={"User-Agent": _USER_AGENT},
+                ssl=False,
+            ) as resp:
+                html = await resp.text(errors="replace")
+
+        import trafilatura
+        text = trafilatura.extract(html, include_comments=False, include_tables=False)
+        if text and len(text) > 150:
+            return text[:3000]
+    except Exception:
+        pass
+
+    # 3. Fallback: RSS summary / description
+    summary = (
+        getattr(entry, "summary", "")
+        or getattr(entry, "description", "")
+        or ""
+    )
+    return summary[:2000]
+
+
+# ── Single feed fetch ─────────────────────────────────────────────────────────
+
+async def _fetch_feed(
+    session: aiohttp.ClientSession,
+    feed_url: str,
+    source_name: str,
+) -> List[Article]:
+    """Fetch one RSS feed with conditional GET and health tracking."""
+    if not article_store.should_check_feed(feed_url):
+        log.debug("feed_backoff_skipped", feed=source_name)
+        return []
+
+    state = article_store.get_feed_state(feed_url) or {}
+    headers: dict[str, str] = {"User-Agent": _USER_AGENT}
+    if state.get("etag"):
+        headers["If-None-Match"] = state["etag"]
+    if state.get("last_modified"):
+        headers["If-Modified-Since"] = state["last_modified"]
+
+    t0 = time.monotonic()
+    try:
+        domain = urlparse(feed_url).netloc
+        if _HAS_LIMITER:
+            async with _get_limiter(domain):
+                async with session.get(
+                    feed_url, timeout=FETCH_TIMEOUT, headers=headers, ssl=False
+                ) as resp:
+                    if resp.status == 304:
+                        log.debug("feed_not_modified", feed=source_name)
+                        article_store.record_feed_success(feed_url)
+                        from monitoring.health import increment as _inc
+                        _inc("feed_304s")
+                        return []
+                    new_etag = resp.headers.get("ETag")
+                    new_lm = resp.headers.get("Last-Modified")
+                    raw = await resp.text(errors="replace")
+        else:
+            async with session.get(
+                feed_url, timeout=FETCH_TIMEOUT, headers=headers, ssl=False
+            ) as resp:
+                if resp.status == 304:
+                    log.debug("feed_not_modified", feed=source_name)
+                    article_store.record_feed_success(feed_url)
+                    from monitoring.health import increment as _inc
+                    _inc("feed_304s")
+                    return []
+                new_etag = resp.headers.get("ETag")
+                new_lm = resp.headers.get("Last-Modified")
+                raw = await resp.text(errors="replace")
+
+    except Exception as exc:
+        failures = article_store.record_feed_failure(feed_url)
+        log.warning("feed_fetch_error", feed=source_name, error=str(exc),
+                    consecutive_failures=failures)
+        return []
+
+    latency_ms = (time.monotonic() - t0) * 1000
+
+    # Update ETag / Last-Modified
+    update_kwargs = {}
+    if new_etag:
+        update_kwargs["etag"] = new_etag
+    if new_lm:
+        update_kwargs["last_modified"] = new_lm
+    article_store.record_feed_success(feed_url, latency_ms=latency_ms)
+    if update_kwargs:
+        article_store.update_feed_state(feed_url, **update_kwargs)
+
+    parsed = _parse_feed(raw)
+    articles = []
+
+    for entry in parsed.entries[:MAX_ARTICLES_PER_FEED]:
+        url = getattr(entry, "link", None)
+        title = getattr(entry, "title", "").strip()
+        if not url or not title:
+            continue
+
+        if not _is_fresh(entry):
+            continue
+
+        # URL-hash dedup (exact URL match)
+        normalized = normalize_url(url)
+        url_hash = hashlib.sha256(normalized.encode()).hexdigest()
+        if article_store.seen(url_hash):
+            continue
+
+        # Title-hash dedup (same title, different URL)
+        title_hash = hashlib.sha256(title.lower().strip().encode()).hexdigest()
+        if article_store.seen_title_hash(title_hash):
+            continue
+
+        # Body extraction
+        body = await _extract_body(session, url, entry)
+        if not body or len(body) < 100:
+            continue
+
+        # SimHash near-duplicate check
+        sim = compute_simhash(title, body)
+        if article_store.seen_simhash(sim):
+            log.debug("simhash_dup_skipped", title=title[:60])
+            continue
+
+        # Cross-language embedding dedup (Korean ↔ English same story)
+        embed_vec = embed(title, body)
+        if article_store.seen_embedding(embed_vec, threshold=0.65):
+            log.debug("embed_dup_skipped", title=title[:60])
+            continue
+
+        articles.append(Article(
+            url=normalized,
+            title=title,
+            source=source_name,
+            body=body,
+            published=getattr(entry, "published", None),
+        ))
+
+    return articles
+
+
+# ── Main fetch function ───────────────────────────────────────────────────────
+
+async def fetch_new_articles() -> List[Article]:
+    """Fetch all configured RSS feeds in parallel and return new articles."""
+    connector = aiohttp.TCPConnector(limit=15, ssl=False)
+    async with aiohttp.ClientSession(connector=connector) as session:
+        tasks = [
+            _fetch_feed(session, url, name)
+            for name, url in RSS_FEEDS
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    articles: List[Article] = []
+    for r in results:
+        if isinstance(r, list):
+            articles.extend(r)
+        elif isinstance(r, Exception):
+            log.warning("feed_gather_error", error=str(r))
+
+    log.info("articles_fetched", count=len(articles))
+    return articles

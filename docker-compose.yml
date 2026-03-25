@@ -1,0 +1,85 @@
+services:
+
+  # ── 뉴스리더 라디오 ───────────────────────────────────────────────────────
+  radio:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./data:/app/data          # SQLite DB
+      - ./cache:/app/cache        # TTS 캐시
+      - ./archive:/app/archive    # 날짜별 방송 아카이브
+      - .:/app                    # 코드 라이브 마운트 (make reload 지원)
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      - prometheus
+
+  # ── autoheal: 비정상 컨테이너 자동 재시작 ────────────────────────────────
+  autoheal:
+    image: willfarrell/autoheal:latest
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: all
+      AUTOHEAL_INTERVAL: "15"
+      AUTOHEAL_START_PERIOD: "60"
+
+  # ── Cloudflare Tunnel: 라디오 스트림 ─────────────────────────────────────
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://radio:8000
+    depends_on:
+      - radio
+
+  # ── Cloudflare Tunnel: Grafana 대시보드 ──────────────────────────────────
+  cloudflared-grafana:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://grafana:3000
+    depends_on:
+      - grafana
+
+  # ── Prometheus: 메트릭 수집 ───────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+
+  # ── Grafana: 대시보드 ─────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "newsleader"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+
+volumes:
+  prometheus_data:
+  grafana_data:
