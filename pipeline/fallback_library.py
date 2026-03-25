@@ -11,8 +11,10 @@ Static segments are TTS-generated Korean announcements:
   - 잠시 대기 (please wait)
   - 시간 고지 (current time)
 
-Segments are persisted to cache/fallback_N.mp3 so they load instantly on restart
-(no TTS call needed). On first run or if cache files are missing, TTS generates them.
+Segments are persisted to cache/fallback/N.mp3 (subdirectory, not cache root)
+so they load instantly on restart (no TTS call needed) and are NOT picked up by
+restore_recent_cache (which globs cache/*.mp3 only).
+On first run or if cache files are missing, TTS generates them.
 On recovery (real content available again), fallback is skipped.
 """
 import asyncio
@@ -37,7 +39,8 @@ _pool_lock = threading.Lock()
 
 def _cache_path(idx: int) -> Path:
     from config import config
-    return Path(config.CACHE_DIR) / f"fallback_{idx}.mp3"
+    # Subdirectory keeps fallback files out of the cache root (restore_recent_cache globs cache/*.mp3)
+    return Path(config.CACHE_DIR) / "fallback" / f"{idx}.mp3"
 
 
 def _load_from_disk() -> list[bytes]:

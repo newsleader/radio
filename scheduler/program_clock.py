@@ -176,6 +176,15 @@ def run_content_pipeline(emergency: bool = False) -> None:
             if not mp3_bytes:
                 continue
 
+            # Persist display title alongside MP3 for cache restore
+            try:
+                from pathlib import Path as _Path
+                (_Path(config.CACHE_DIR) / f"{cache_key}.title").write_text(
+                    (topic or article.title), encoding="utf-8"
+                )
+            except Exception:
+                pass
+
             # Use Korean topic as display title if available (fallback: English article title)
             display_title = topic or article.title
             if is_brk:
