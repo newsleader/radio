@@ -17,10 +17,12 @@ load_dotenv()
 log_level = getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper(), logging.INFO)
 logging.basicConfig(format="%(message)s", stream=sys.stdout, level=log_level)
 
-# Suppress verbose third-party loggers that produce noise at INFO/WARNING level:
-# - trafilatura: "discarding data: <url>", "empty HTML tree: None" on every failed extract
-# - apscheduler: "Job X executed successfully" every 30s (watchdog runs = 2/min)
-logging.getLogger("trafilatura").setLevel(logging.ERROR)
+# Suppress verbose third-party loggers:
+# - trafilatura + htmldate: log at ERROR level for normal extraction failures
+#   ("discarding data", "empty HTML tree", "parsed tree length") — not actionable
+# - apscheduler: "Job X executed successfully" every 30s (watchdog = 2/min)
+logging.getLogger("trafilatura").setLevel(logging.CRITICAL)
+logging.getLogger("htmldate").setLevel(logging.CRITICAL)
 logging.getLogger("apscheduler").setLevel(logging.WARNING)
 structlog.configure(
     processors=[
