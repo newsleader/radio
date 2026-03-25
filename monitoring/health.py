@@ -18,17 +18,19 @@ _start_time = time.time()
 # ── Lightweight counters (no prometheus-client needed) ────────────────────────
 
 _counters: dict[str, int] = {
-    "articles_fetched":    0,
-    "scripts_generated":   0,
-    "scripts_qa_failed":   0,
-    "tts_completed":       0,
-    "tts_errors":          0,
-    "llm_errors":          0,
-    "pipeline_runs":       0,
-    "pipeline_errors":     0,
-    "chunks_dropped":      0,
-    "breaking_news":       0,
-    "feed_304s":           0,
+    "articles_fetched":        0,
+    "articles_filtered_title": 0,  # blocked by _NON_NEWS_TITLE_RE (horoscope, changelog, etc.)
+    "articles_filtered_body":  0,  # blocked by MIN_BODY_LENGTH (thin body after extraction)
+    "scripts_generated":       0,
+    "scripts_qa_failed":       0,
+    "tts_completed":           0,
+    "tts_errors":              0,
+    "llm_errors":              0,
+    "pipeline_runs":           0,
+    "pipeline_errors":         0,
+    "chunks_dropped":          0,
+    "breaking_news":           0,
+    "feed_304s":               0,
 }
 _lock = threading.Lock()
 

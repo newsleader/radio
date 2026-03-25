@@ -249,6 +249,8 @@ async def _fetch_feed(
         # Title-based non-news filter (cheap regex, runs before HTTP body fetch)
         if _NON_NEWS_TITLE_RE.search(title):
             log.debug("non_news_title_skipped", title=title[:80])
+            from monitoring.health import increment as _inc
+            _inc("articles_filtered_title")
             continue
 
         # URL-hash dedup (exact URL match)
@@ -265,6 +267,8 @@ async def _fetch_feed(
         # Body extraction
         body = await _extract_body(session, url, entry)
         if not body or len(body) < MIN_BODY_LENGTH:
+            from monitoring.health import increment as _inc
+            _inc("articles_filtered_body")
             continue
 
         # SimHash near-duplicate check
