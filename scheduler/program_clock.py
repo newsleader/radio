@@ -174,6 +174,10 @@ def run_content_pipeline(emergency: bool = False) -> None:
         scored = [(a, *score_map[id(a)]) for a in ordered]
 
         processed = 0
+        # Per-source cap: prevent any single outlet from monopolizing a pipeline run.
+        # e.g. 6 crypto sources × 8 articles each = 48 candidates; cap each at 2.
+        _MAX_PER_SOURCE = 2
+        source_counts: dict[str, int] = {}
 
         for article, art_score, category in scored:
             if audio_queue.is_full():
@@ -184,6 +188,14 @@ def run_content_pipeline(emergency: bool = False) -> None:
             is_brk = breaking_detector.check_and_register(article.title, article.source)
             if is_brk:
                 increment("breaking_news")
+
+            # Per-source cap (breaking news bypasses)
+            if not is_brk:
+                src_count = source_counts.get(article.source, 0)
+                if src_count >= _MAX_PER_SOURCE:
+                    log.debug("source_cap_skipped",
+                              source=article.source, count=src_count)
+                    continue
 
             # Editorial diversity check
             if not emergency and not editorial_scheduler.should_broadcast(category, is_breaking_news=is_brk):
@@ -238,6 +250,7 @@ def run_content_pipeline(emergency: bool = False) -> None:
                 embed_tokens=embed_vec,
                 aired=True,
             )
+            source_counts[article.source] = source_counts.get(article.source, 0) + 1
             processed += 1
 
         log.info("pipeline_complete", processed=processed,
