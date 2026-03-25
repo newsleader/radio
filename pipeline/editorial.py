@@ -113,16 +113,19 @@ _BREAKING_KW = re.compile(
     re.IGNORECASE,
 )
 
-# ── Max segments per category per hour ───────────────────────────────────────
+# ── Max segments per category per sliding window ─────────────────────────────
+# Using 20-minute sliding window instead of fixed hourly quota.
+# This prevents bursting 30 finance articles in the first few minutes then nothing.
 
-_MAX_PER_HOUR: dict[str, int] = {
-    "finance": 30,
-    "tech": 25,
-    "geopolitics": 30,
-    "domestic_kr": 25,
-    "energy": 20,
-    "human_interest": 20,
-    "general": 35,
+_WINDOW_MINUTES: int = 20
+_MAX_PER_WINDOW: dict[str, int] = {
+    "finance": 6,
+    "tech": 5,
+    "geopolitics": 6,
+    "domestic_kr": 5,
+    "energy": 4,
+    "human_interest": 4,
+    "general": 7,
 }
 
 
@@ -217,9 +220,9 @@ class EditorialScheduler:
         if is_breaking_news:
             return True
 
-        # Prune old timestamps
+        # Prune timestamps outside sliding window
         now = datetime.now(timezone.utc)
-        cutoff = now - timedelta(hours=1)
+        cutoff = now - timedelta(minutes=_WINDOW_MINUTES)
         self._broadcast_times[category] = [
             t for t in self._broadcast_times[category] if t > cutoff
         ]
@@ -228,8 +231,8 @@ class EditorialScheduler:
         if category == self._last_category:
             return False
 
-        # Hourly quota check
-        max_allowed = _MAX_PER_HOUR.get(category, 5)
+        # Sliding-window quota check
+        max_allowed = _MAX_PER_WINDOW.get(category, 3)
         return len(self._broadcast_times[category]) < max_allowed
 
     def record_broadcast(self, category: str) -> None:

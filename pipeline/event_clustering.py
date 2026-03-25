@@ -2,13 +2,11 @@
 Lightweight event clustering for NewsLeader.
 
 Groups articles into "events" (same news story) using TF-IDF cosine similarity
-and single-linkage clustering. No ML libraries required.
+and complete-linkage clustering. No ML libraries required.
 
-This replaces BERTopic (which needs ~2GB of ML deps) with a fast heuristic
-approach that works well for short news headlines and summaries.
-
-BERTopic can be swapped in later by replacing _cluster_articles() while keeping
-the same EventCluster interface.
+Complete-linkage (vs single-linkage): two articles are in the same cluster only
+if ALL pairs of articles in the cluster are similar (cosine ≥ threshold).
+This prevents "chaining" where A≈B and B≈C are merged even if A≉C.
 
 Usage:
     clusters = cluster_articles(articles)
@@ -91,7 +89,7 @@ def cluster_articles(
         return []
 
     # Build document frequency counts
-    texts = [f"{a.title} {a.body[:300]}" for a in articles]
+    texts = [f"{a.title} {a.body[:600]}" for a in articles]
     doc_freqs: dict[str, int] = {}
     for text in texts:
         words = set(re.findall(r'[가-힣]{2,}|[A-Za-z]{3,}', text.lower()))
@@ -101,18 +99,44 @@ def cluster_articles(
     n_docs = len(texts)
     vecs = [_tfidf_vector(t, doc_freqs, n_docs) for t in texts]
 
-    # Single-linkage clustering
-    cluster_ids = list(range(n_docs))   # initially each article is its own cluster
-
+    # Pre-compute pairwise similarity matrix
+    sim: dict[tuple[int, int], float] = {}
     for i in range(n_docs):
         for j in range(i + 1, n_docs):
-            if cluster_ids[i] == cluster_ids[j]:
-                continue
-            if _cosine(vecs[i], vecs[j]) >= threshold:
-                # Merge j's cluster into i's cluster
-                old_cid = cluster_ids[j]
-                new_cid = cluster_ids[i]
-                cluster_ids = [new_cid if c == old_cid else c for c in cluster_ids]
+            s = _cosine(vecs[i], vecs[j])
+            if s > 0:
+                sim[(i, j)] = s
+
+    # Complete-linkage clustering: merge two clusters only if ALL cross-pairs ≥ threshold
+    # (prevents A≈B, B≈C chains where A≉C)
+    cluster_ids = list(range(n_docs))
+
+    changed = True
+    while changed:
+        changed = False
+        # Collect unique cluster pairs
+        cid_map: dict[int, list[int]] = {}
+        for idx, cid in enumerate(cluster_ids):
+            cid_map.setdefault(cid, []).append(idx)
+        cids = list(cid_map.keys())
+        for a in range(len(cids)):
+            for b in range(a + 1, len(cids)):
+                ca, cb = cids[a], cids[b]
+                members_a = cid_map[ca]
+                members_b = cid_map[cb]
+                # Complete-linkage: minimum similarity across all cross-pairs
+                min_sim = min(
+                    sim.get((min(i, j), max(i, j)), 0.0)
+                    for i in members_a
+                    for j in members_b
+                )
+                if min_sim >= threshold:
+                    # Merge cb into ca
+                    cluster_ids = [ca if c == cb else c for c in cluster_ids]
+                    changed = True
+                    break
+            if changed:
+                break
 
     # Group by cluster_id
     groups: dict[int, list[int]] = {}
