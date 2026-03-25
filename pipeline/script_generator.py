@@ -93,7 +93,7 @@ def _call_llm_api(prompt: str) -> str:
     api_key  = os.environ.get("LLM_API_KEY",  config.LLM_API_KEY)
 
     client = OpenAI(base_url=base_url, api_key=api_key, timeout=300)
-    resp = client.chat.completions.create(
+    stream = client.chat.completions.create(
         model=model,
         messages=[
             {"role": "system", "content": _SYSTEM_PROMPT},
@@ -101,8 +101,14 @@ def _call_llm_api(prompt: str) -> str:
         ],
         max_tokens=4096,
         temperature=0.75,
+        stream=True,
     )
-    return resp.choices[0].message.content.strip()
+    chunks = []
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            chunks.append(delta)
+    return "".join(chunks).strip()
 
 # ── 시스템 프롬프트 ──────────────────────────────────────────────────────────
 _SYSTEM_PROMPT = """당신은 20년 경력의 KBS 라디오 뉴스 앵커입니다.

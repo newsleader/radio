@@ -72,7 +72,8 @@ def register_routes(app: Flask) -> None:
             last_ok = _last_pipeline_success
 
         # Overall status
-        queue_ok = q_sec > 30 or listeners == 0   # not critical if no listeners
+        # queue_ok: pass if no listeners, pipeline hasn't run yet (startup), or queue is sufficient
+        queue_ok = listeners == 0 or last_run_ago is None or q_sec > 30
         pipeline_ok = last_run_ago is None or last_run_ago < 1800  # ran within 30 min
 
         status = "ok" if (queue_ok and pipeline_ok) else "degraded"
