@@ -169,6 +169,15 @@
 - count=4 at critical: enqueues all 4 scripts (~28s total) vs 2 scripts (~14s)
 - Result: on restarts with empty queue, fallback audio is immediately available and provides ~28s of coverage per critical event
 
+### PR #39 — fix: extract Korean topic from closing phrase when JSON topic is empty
+- When JSON parsing fails, meta_topic=None → display_title falls back to English article title in ICY metadata
+- Fix: regex extracts topic from '이상으로 [topic] 소식이었습니다.' closing phrase
+- Topic capped at 40 chars for ICY compatibility
+
+### PR #38 — feat: track articles_filtered_title/body in /status counters
+- New counters: articles_filtered_title (non-news title regex), articles_filtered_body (thin body < 300 chars)
+- Visible in /status JSON and /metrics Prometheus format
+
 ### PR #37 — fix: QA-feedback retry prompt + filter Japanese earthquake alerts
 - LLM retry on QA failure now appends specific correction text (was same prompt → same failure)
 - _build_retry_feedback(): WORD_COUNT → current count + add more context, CLOSING_MISSING → exact phrase, LIST_FORMAT → identifies pattern, OPENING_WRONG → reminder
