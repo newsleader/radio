@@ -136,78 +136,59 @@ def run_content_pipeline(emergency: bool = False) -> None:
         score_map = {id(x[0]): (x[1], x[2]) for x in scored_raw}
         scored = [(a, *score_map[id(a)]) for a in ordered]
 
-        BATCH_SIZE = 5
-
         processed = 0
 
-        for batch_start in range(0, len(scored), BATCH_SIZE):
+        for article, art_score, category in scored:
             if audio_queue.is_full():
                 log.info("pipeline_queue_full_stopping")
                 break
 
-            batch = scored[batch_start:batch_start + BATCH_SIZE]
+            # Breaking news detection
+            is_brk = breaking_detector.check_and_register(article.title, article.source)
+            if is_brk:
+                increment("breaking_news")
 
-            script_batch: list[tuple] = []
-            for article, art_score, category in batch:
-                # Breaking news detection
-                is_brk = breaking_detector.check_and_register(article.title, article.source)
-                if is_brk:
-                    increment("breaking_news")
-
-                # Editorial diversity check
-                if not emergency and not editorial_scheduler.should_broadcast(category, is_breaking_news=is_brk):
-                    log.debug("editorial_skipped",
-                              category=category, title=article.title[:50])
-                    continue
-
-                try:
-                    script = generate_script(article)
-                except Exception as exc:
-                    log.warning("script_skipped",
-                                title=article.title[:60], error=type(exc).__name__)
-                    continue
-                if not script:
-                    continue
-
-                cache_key = hashlib.sha256(script.encode()).hexdigest()[:16]
-                script_batch.append((article, art_score, category, script, cache_key, is_brk))
-
-            if not script_batch:
+            # Editorial diversity check
+            if not emergency and not editorial_scheduler.should_broadcast(category, is_breaking_news=is_brk):
+                log.debug("editorial_skipped",
+                          category=category, title=article.title[:50])
                 continue
 
-            log.info("pipeline_batch_scripts", batch_start=batch_start,
-                     scripts=len(script_batch))
+            try:
+                script = generate_script(article)
+            except Exception as exc:
+                log.warning("script_skipped",
+                            title=article.title[:60], error=type(exc).__name__)
+                continue
+            if not script:
+                continue
 
-            for article, art_score, category, script, cache_key, is_brk in script_batch:
-                if audio_queue.is_full():
-                    log.info("pipeline_queue_full_stopping")
-                    break
+            cache_key = hashlib.sha256(script.encode()).hexdigest()[:16]
+            mp3_bytes = asyncio.run(text_to_mp3(script, cache_key=cache_key))
+            if not mp3_bytes:
+                continue
 
-                mp3_bytes = asyncio.run(text_to_mp3(script, cache_key=cache_key))
-                if not mp3_bytes:
-                    continue
+            if is_brk:
+                audio_queue.enqueue_priority(mp3_bytes, title=article.title)
+            else:
+                audio_queue.enqueue(mp3_bytes, title=article.title)
 
-                if is_brk:
-                    audio_queue.enqueue_priority(mp3_bytes, title=article.title)
-                else:
-                    audio_queue.enqueue(mp3_bytes, title=article.title)
+            # ── Archive: 날짜별 MP3 저장 ──────────────────────────
+            _archive_mp3(mp3_bytes, article.title)
 
-                # ── Archive: 날짜별 MP3 저장 ──────────────────────────
-                _archive_mp3(mp3_bytes, article.title)
+            editorial_scheduler.record_broadcast(category)
 
-                editorial_scheduler.record_broadcast(category)
-
-                url_hash = hashlib.sha256(article.url.encode()).hexdigest()
-                embed_vec = compute_embed(article.title, article.body)
-                article_store.mark_seen(
-                    url_hash,
-                    title=article.title,
-                    source=article.source,
-                    simhash_value=0,
-                    quality_score=min(art_score / 10.0, 1.0),
-                    embed_tokens=embed_vec,
-                )
-                processed += 1
+            url_hash = hashlib.sha256(article.url.encode()).hexdigest()
+            embed_vec = compute_embed(article.title, article.body)
+            article_store.mark_seen(
+                url_hash,
+                title=article.title,
+                source=article.source,
+                simhash_value=0,
+                quality_score=min(art_score / 10.0, 1.0),
+                embed_tokens=embed_vec,
+            )
+            processed += 1
 
         log.info("pipeline_complete", processed=processed,
                  queue_s=round(audio_queue.buffered_seconds, 1))
