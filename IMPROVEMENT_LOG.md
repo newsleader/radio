@@ -104,6 +104,12 @@
 - 169 feeds × 30 connection slots: last feeds waited 9+ sec in pool queue → exceeded 10s total timeout
 - 80 slots = at most 2 rounds → queue wait ≤3s → articles_fetched: 94 (was 0 due to all feeds timing out)
 
+### PR #26 — fix: skip GDELT when RSS fetches ≥30 articles
+- GDELT consistently returns 0 articles while taking ~100s per scheduled run
+- RSS reliably fetches 113+ articles → GDELT provides zero additional value
+- Skip GDELT when rss_articles >= 30; still activates if RSS degrades to <30 (fallback preserved)
+- Combined with PR #25: GDELT now disabled under all normal operating conditions
+
 ### PR #25 — fix: skip GDELT when buffer < BUFFER_LOW (300s)
 - GDELT 5 queries × ~20s timeout = ~100s total, returns 0 articles, but ran on every restart
 - After restart _LAST_FETCH resets to 0 → first pipeline always waited 100s before producing audio
