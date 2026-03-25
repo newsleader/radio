@@ -93,13 +93,16 @@ def _call_llm_api(prompt: str) -> str:
     api_key  = os.environ.get("LLM_API_KEY",  config.LLM_API_KEY)
 
     client = OpenAI(base_url=base_url, api_key=api_key, timeout=300)
+    # /no_think disables thinking mode for qwen3.5 and similar models,
+    # preventing thinking tokens from consuming max_tokens budget.
+    user_msg = prompt + "\n/no_think"
     stream = client.chat.completions.create(
         model=model,
         messages=[
             {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user",   "content": prompt},
+            {"role": "user",   "content": user_msg},
         ],
-        max_tokens=4096,
+        max_tokens=8192,
         temperature=0.75,
         stream=True,
     )
