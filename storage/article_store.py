@@ -176,7 +176,7 @@ class ArticleStore:
 
     def mark_seen(self, url_hash: str, title: str = "", source: str = "",
                   simhash_value: int = 0, quality_score: float = 0.5,
-                  embed_tokens: Optional[dict] = None) -> None:
+                  embed_tokens: Optional[dict] = None, aired: bool = False) -> None:
         """Mark a URL hash as seen with optional metadata and embedding tokens."""
         now = datetime.utcnow().isoformat()
         title_hash = hashlib.sha256(_normalize_title(title).encode()).hexdigest() if title else None
@@ -185,11 +185,11 @@ class ArticleStore:
             conn = self._connect()
             conn.execute(
                 """INSERT OR REPLACE INTO seen_articles
-                   (url_hash, seen_at, title_hash, simhash, source, quality_score, embed_tokens)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                   (url_hash, seen_at, title_hash, simhash, source, quality_score, embed_tokens, aired)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 (url_hash, now, title_hash,
                  simhash_value if simhash_value else None,
-                 source or None, quality_score, embed_json),
+                 source or None, quality_score, embed_json, 1 if aired else 0),
             )
             conn.commit()
             conn.close()
@@ -332,17 +332,35 @@ class ArticleStore:
     def restore_recent_cache(self, cache_dir: str, max_age_hours: int = 2) -> list:
         """
         Return list of (mp3_path, mtime) for MP3 files generated within
-        max_age_hours. Used by AudioQueue to restore content after restart.
+        max_age_hours that have NOT been aired yet. Used by AudioQueue to
+        restore content after restart without re-playing heard articles.
         """
         cache_path = Path(cache_dir)
         if not cache_path.exists():
             return []
         cutoff = time.time() - max_age_hours * 3600
-        files = [
+        candidates = [
             (f, f.stat().st_mtime)
             for f in cache_path.glob("*.mp3")
             if f.stat().st_mtime > cutoff
         ]
+        if not candidates:
+            return []
+
+        # Look up which url_hashes have already been aired
+        hashes = [f.stem for f, _ in candidates]  # filename stem = url_hash
+        placeholders = ",".join("?" * len(hashes))
+        with self._lock:
+            conn = self._connect()
+            aired_set = {
+                row[0] for row in conn.execute(
+                    f"SELECT url_hash FROM seen_articles WHERE url_hash IN ({placeholders}) AND aired=1",
+                    hashes,
+                ).fetchall()
+            }
+            conn.close()
+
+        files = [(f, mt) for f, mt in candidates if f.stem not in aired_set]
         files.sort(key=lambda x: x[1])  # oldest first
         return files
 

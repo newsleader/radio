@@ -32,7 +32,7 @@ from pipeline.editorial import (
 from pipeline.embedder import embed as compute_embed
 from pipeline.event_clustering import cluster_articles
 from pipeline.fallback_library import enqueue_fallback, initialize_async as init_fallback
-from storage.article_store import article_store
+from storage.article_store import article_store, compute_simhash
 from monitoring.health import increment, set_pipeline_run
 from monitoring.tracing import span as trace_span
 
@@ -184,9 +184,10 @@ def run_content_pipeline(emergency: bool = False) -> None:
                 url_hash,
                 title=article.title,
                 source=article.source,
-                simhash_value=0,
+                simhash_value=compute_simhash(article.title, article.body[:600]),
                 quality_score=min(art_score / 10.0, 1.0),
                 embed_tokens=embed_vec,
+                aired=True,
             )
             processed += 1
 
