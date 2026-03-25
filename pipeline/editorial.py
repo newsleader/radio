@@ -107,7 +107,7 @@ _DEFAULT_TIER = 0.65
 # ── Breaking news keywords ────────────────────────────────────────────────────
 
 _BREAKING_KW = re.compile(
-    r'속보|긴급|단독|사망|부상|폭발|화재|지진|테러|충돌|선언|계엄|비상|'
+    r'속보|긴급|단독|사망|부상자|부상을|폭발|화재|지진|테러|충돌|계엄|비상사태|'
     r'breaking|urgent|alert|crash|explosion|attack|dead|killed|emergency|'
     r'resignation|arrested|collapse|ceasefire|strike',
     re.IGNORECASE,
