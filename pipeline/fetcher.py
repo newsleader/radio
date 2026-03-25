@@ -31,8 +31,8 @@ log = structlog.get_logger(__name__)
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
-FETCH_TIMEOUT = aiohttp.ClientTimeout(total=10)    # reduced from 20s — faster fail on dead feeds
-ARTICLE_TIMEOUT = aiohttp.ClientTimeout(total=12)  # reduced from 15s
+FETCH_TIMEOUT = aiohttp.ClientTimeout(total=15)    # 169 feeds × pool wait + network; 10s was too short
+ARTICLE_TIMEOUT = aiohttp.ClientTimeout(total=12)  # article body fetch
 MAX_ARTICLES_PER_FEED = 8
 MAX_ARTICLE_AGE_HOURS = 8
 
@@ -284,7 +284,7 @@ async def fetch_new_articles() -> List[Article]:
         for d in domains:
             limiters[d] = _AsyncLimiter(max_rate=1, time_period=2.0)
 
-    connector = aiohttp.TCPConnector(limit=30, ssl=False)  # increased from 15
+    connector = aiohttp.TCPConnector(limit=80, ssl=False)  # ~half of 169 feeds; was 30
     async with aiohttp.ClientSession(connector=connector) as session:
         tasks = [
             _fetch_feed(session, url, name, limiters)
