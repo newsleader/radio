@@ -22,6 +22,9 @@ from scheduler.program_clock import program_clock
 def _configure_logging() -> None:
     log_level = getattr(logging, config.LOG_LEVEL.upper(), logging.INFO)
     logging.basicConfig(format="%(message)s", stream=sys.stdout, level=log_level)
+    logging.getLogger("trafilatura").setLevel(logging.CRITICAL)
+    logging.getLogger("htmldate").setLevel(logging.CRITICAL)
+    logging.getLogger("apscheduler").setLevel(logging.WARNING)
     structlog.configure(
         processors=[
             structlog.stdlib.add_log_level,

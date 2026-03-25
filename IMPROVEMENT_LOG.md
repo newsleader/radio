@@ -104,6 +104,11 @@
 - 169 feeds × 30 connection slots: last feeds waited 9+ sec in pool queue → exceeded 10s total timeout
 - 80 slots = at most 2 rounds → queue wait ≤3s → articles_fetched: 94 (was 0 due to all feeds timing out)
 
+### PR #32 — fix: suppress trafilatura/htmldate/apscheduler verbose logging
+- trafilatura + htmldate log at ERROR level for normal extraction failures ("discarding data", "empty HTML tree", "parsed tree length") — not actionable, silenced with CRITICAL
+- apscheduler logs "Job executed successfully" at INFO every 30s (watchdog = 2,880 lines/day) — silenced at WARNING (keeps misfires/errors visible)
+- Applied in both wsgi.py (production) and main.py (local dev)
+
 ### PR #27 — fix: healthcheck start_period 60s→180s (prevent autoheal restart loop)
 - Race condition: health check fails at ~100s (60s start + 3×20s retries), first audio arrives at 90-130s
 - autoheal restarted container 10 times in 20 min at 02:46-03:05 UTC when cache was empty
