@@ -43,7 +43,8 @@ _NON_NEWS_TITLE_RE = re.compile(
     r"운세|점성|별자리"                           # horoscope/astrology
     r"|^\S[\w\-\.]+\s+v?\d+\.\d+[a-z]\d*$"      # software release: "package-name 1.2a3"
     r"|demo day dates?"                           # event listing titles
-    r"|\bchangelog\b",
+    r"|\bchangelog\b"                             # changelog articles
+    r"|【地震情報】",                              # Japanese earthquake alerts (always thin, not Korean news)
     re.IGNORECASE,
 )
 
