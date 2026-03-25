@@ -78,7 +78,8 @@ def register_routes(app: Flask) -> None:
 
         status = "ok" if (queue_ok and pipeline_ok) else "degraded"
 
-        return jsonify({
+        http_status = 200 if status == "ok" else 503
+        resp = jsonify({
             "status": status,
             "uptime_s": uptime,
             "checks": {
@@ -89,7 +90,9 @@ def register_routes(app: Flask) -> None:
                 "pipeline_last_success": last_ok,
                 "pipeline_ok": pipeline_ok,
             },
-        }), 200 if status == "ok" else 503
+        })
+        resp.headers["Cache-Control"] = "no-store"
+        return resp, http_status
 
     @app.route("/status")
     def status():

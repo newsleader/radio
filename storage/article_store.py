@@ -312,10 +312,13 @@ class ArticleStore:
 
     def record_feed_failure(self, feed_url: str) -> int:
         """Record failed feed fetch. Returns new failure count."""
+        import random
         state = self.get_feed_state(feed_url) or {}
         failures = (state.get("consecutive_failures") or 0) + 1
-        # Backoff: 2^failures minutes, capped at 4 hours (240 min)
+        # Backoff: 2^failures minutes, capped at 4 hours (240 min), with ±25% jitter
         backoff_min = min(2 ** failures, 240)
+        jitter = backoff_min * 0.25 * (random.random() * 2 - 1)  # ±25%
+        backoff_min = max(1, backoff_min + jitter)
         next_check = (datetime.utcnow() + timedelta(minutes=backoff_min)).isoformat()
         self.update_feed_state(
             feed_url,
