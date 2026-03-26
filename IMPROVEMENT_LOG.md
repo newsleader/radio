@@ -2,6 +2,11 @@
 
 ## 2026-03-26
 
+### PR #54 — fix: user template — explicitly allow shorter scripts over hallucinated content
+- "170~210 어절, 배경·원인·수치·인용·전망을 모두 담되" → "기사에 있는 내용만, 부족하면 150~170 어절도 괜찮습니다"
+- Root cause: LLM stretches to hit 170-word target by inventing content when article body is short (e.g., opinion piece with only 300 chars body)
+- Acceptable outcome: 150-word scripts from thin articles > 170-word hallucinated scripts
+
 ### PR #53 — fix: anti-hallucination prompt + lower temperature + MK시그널 filter
 - `[절대 원칙 — 팩트 준수]` section added to system prompt: LLM must use only article-provided facts, no invented content
 - Temperature 0.75 → 0.65: reduces creative invention while keeping sentence variety
