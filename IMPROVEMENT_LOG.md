@@ -2,6 +2,11 @@
 
 ## 2026-03-26
 
+### PR #49 — fix: lower QA word floor to 100 for breaking news
+- 속보 articles with thin source material: LLM generates 138 words → QA fails → retry → 112 words (worse) → skipped
+- Breaking news uses min_words=100 via `is_breaking=True` in generate_script; regular articles keep 150-word floor
+- No retry for thin 속보 — first attempt at 100-149 words airs without a harmful retry that makes things worse
+
 ### PR #48 — fix: per-cluster dedup — only one article per news event per pipeline run
 - Different Korean feeds carry the same story with slightly different titles → both passed title-hash/simhash/in-run dedup → same story aired twice in same run
 - cluster_id_map: {url → canonical_url} for multi-source clusters; seen_cluster_ids tracks aired clusters per run

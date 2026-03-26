@@ -388,12 +388,16 @@ def generate_script(article: Article, is_breaking: bool = False) -> Optional[tup
 
     increment("scripts_generated")
     word_count = len(script.split())
-    # If JSON parsing didn't yield a topic, extract from closing phrase:
-    # "이상으로 [topic] 소식이었습니다." → topic
-    if not meta_topic:
+    # If JSON parsing didn't yield a topic, OR the topic is non-Korean (e.g. English),
+    # extract from closing phrase: "이상으로 [topic] 소식이었습니다." → topic.
+    # This handles English-titled articles where the LLM echoes the English title as topic.
+    topic_is_korean = bool(re.search(r'[가-힣]', meta_topic or ""))
+    if not topic_is_korean:
         m = re.search(r'이상으로\s+(.+?)\s+소식이었습니다', script)
         if m:
-            meta_topic = m.group(1).strip()[:40]  # cap at 40 chars for ICY
+            korean_topic = m.group(1).strip()[:40]
+            if re.search(r'[가-힣]', korean_topic):  # only adopt if Korean text found
+                meta_topic = korean_topic
     topic = meta_topic or ""
     log.info(
         "script_generated",
