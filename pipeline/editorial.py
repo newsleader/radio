@@ -60,6 +60,13 @@ _CATEGORY_KEYWORDS = {
         "education", "health", "science", "space", "sport",
         "연구", "발견", "개발", "우주", "기후", "환경",
     ],
+    "cybersecurity": [
+        "해킹", "사이버", "랜섬웨어", "악성코드", "취약점", "보안", "피싱",
+        "hack", "hacker", "ransomware", "malware", "vulnerability", "exploit",
+        "breach", "phishing", "botnet", "spyware", "trojan", "ddos",
+        "cybersecurity", "cyber attack", "zero-day", "zero day", "wiper",
+        "infosec", "threat", "cve",
+    ],
 }
 
 # ── Source credibility tiers ─────────────────────────────────────────────────
@@ -93,6 +100,12 @@ _SOURCE_TIER: dict[str, float] = {
     "TechCrunch": 0.75, "Ars Technica": 0.78, "Wired": 0.75,
     "The Verge": 0.72, "MIT Tech Review": 0.82, "VentureBeat": 0.70,
     "IEEE Spectrum": 0.85, "Hacker News": 0.55,
+    # Cybersecurity
+    "Krebs on Security": 0.82, "Schneier on Security": 0.78,
+    "The Hacker News": 0.72, "Bleeping Computer": 0.70,
+    "Unit 42": 0.75, "Malwarebytes Labs": 0.68, "Recorded Future": 0.75,
+    "CISA Alerts": 0.85,  # official US government advisories
+    "보안뉴스": 0.70,
     # Think tanks
     "Brookings": 0.78, "CFR": 0.78, "Foreign Affairs": 0.78,
     # Asian
@@ -125,6 +138,7 @@ _MAX_PER_WINDOW: dict[str, int] = {
     "domestic_kr": 5,
     "energy": 4,
     "human_interest": 4,
+    "cybersecurity": 3,   # cap at 3 per window — security clusters are common
     "general": 7,
 }
 
@@ -144,7 +158,10 @@ def categorize_article(title: str, source: str) -> str:
     src_lower = source.lower()
     if any(k in src_lower for k in ["finance", "market", "economy", "bank", "fed", "ecb", "imf", "eia"]):
         return "finance"
-    if any(k in src_lower for k in ["tech", "wired", "verge", "ars", "ieee", "hacker"]):
+    if any(k in src_lower for k in ["krebs", "bleeping", "hacker news", "cisa", "unit 42", "unit42",
+                                     "malwarebytes", "schneier", "recorded future", "보안뉴스"]):
+        return "cybersecurity"
+    if any(k in src_lower for k in ["tech", "wired", "verge", "ars", "ieee"]):
         return "tech"
     if any(k in src_lower for k in ["world", "global", "international", "aljazeera", "dw", "france24"]):
         return "geopolitics"

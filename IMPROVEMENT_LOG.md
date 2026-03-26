@@ -192,6 +192,17 @@
 - _NON_NEWS_TITLE_RE: regex check before body HTTP fetch (saves round-trip) — blocks 운세/점성/별자리, package vX.Yaz release titles, changelog keyword, demo day dates
 - MIN_BODY_LENGTH: 100 → 300 chars (120-word scripts need ~400 chars of source; 100 was too lenient)
 
+### PR #41 — fix: skip article on LLM refusal instead of minimal fallback
+- generate_minimal_fallback() inserts raw article title (often English) into 2-sentence template → 20-word English-title script bypasses QA and airs
+- Example: "e's new Dynamic Workers ditch containers to run AI agent code 100x faster. 이상으로 VentureBeat 소식이었습니다." (words=20)
+- Fix: on detect_refusal=True, break without setting script → generate_script returns None → article silently skipped
+
+### PR #40 — fix: per-source pipeline cap (max 2 articles per source per run)
+- 6 crypto sources (CoinDesk, CoinTelegraph, Decrypt, Bitcoin Magazine, 블록미디어, 토큰포스트) could each contribute 8 articles → 48 crypto candidates per run
+- MMR diversifies by content similarity, not source identity → two CoinDesk articles on different subtopics both passed
+- Add _MAX_PER_SOURCE=2 in pipeline loop; breaking news bypasses; count only increments after TTS success (editorial skips don't consume quota)
+- Effect: any single outlet limited to 2 articles per pipeline run; crypto cap ≤ 2 per source = max ~12 combined (editorial window further limits to 6 finance)
+
 ### PR #23 — fix: remove 39 dead feeds (169→130)
 - 39 feeds had last_success_at=NULL (never worked from Docker environment)
 - Removed: Reddit r/worldnews|technology|science (block RSS without auth), FeedBurner URLs (securityweek, zerohedge — deprecated), SCMP Technology+Asia, Korea Herald World, KBS World, Google AI Blog, Google Project Zero, HBR, Hacker News (hnrss.org), IEEE Spectrum, Tom's Hardware, Dark Reading, SecurityWeek, Middle East Eye, 데일리시큐, AI News, Radio Free Asia, 코인데스크 코리아, The Block, The Batch (deeplearning.ai), 이데일리 (×2), 머니투데이, 서울경제, SBS뉴스, 조선비즈, 연합뉴스 사회, 기획재정부, 금융위원회, 공정거래위원회, WHO News, Carbon Brief, NBER, St. Louis Fed, Investopedia, Anthropic News
