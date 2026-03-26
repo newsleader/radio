@@ -48,7 +48,7 @@ _NON_NEWS_TITLE_RE = re.compile(
     r"|골든크로스|데드크로스"                     # stock technical analysis screener alerts (not radio news)
     r"|^Hive Life:"                               # Macro Hive lifestyle (non-finance fluffy content)
     r"|\bWeek(?:ly)?\s+(?:in\s+Review|Roundup|Recap)\b"  # weekly compilation articles (redundant summaries)
-    r"|\[MK\s+(?:상한가|하한가|특징주|급등|급락)"  # MK automated stock screener alerts
+    r"|\[MK\s*(?:시그널|파이낸셜시그널|주식|증권|상한가|하한가|특징주|급등|급락)"  # MK automated stock/signal alerts
     r"|상한가\s*종목|하한가\s*종목",              # stock upper/lower limit screener lists (LLM hallucinates on thin data)
     re.IGNORECASE,
 )

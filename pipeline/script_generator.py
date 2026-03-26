@@ -103,7 +103,7 @@ def _call_llm_api(prompt: str) -> str:
             {"role": "system", "content": _SYSTEM_PROMPT},
             {"role": "user",   "content": prompt},
         ],
-        temperature=0.75,
+        temperature=0.65,
         max_tokens=4096,   # required for thinking models (qwen3.5 etc.) — thinking eats tokens first
         stream=True,
     )
@@ -118,6 +118,13 @@ def _call_llm_api(prompt: str) -> str:
 _SYSTEM_PROMPT = """당신은 20년 경력의 KBS 라디오 뉴스 앵커입니다.
 주어진 기사를 바탕으로 라디오 청취자를 위한 뉴스 대본을 작성합니다.
 이 대본은 TTS(음성합성)로 읽힙니다. 눈이 아닌 귀를 위한 글입니다.
+
+[절대 원칙 — 팩트 준수]
+반드시 제공된 기사의 내용만 사용하세요.
+기사에 없는 사건, 인물, 수치, 발언, 일정을 추가하거나 지어내지 마세요.
+기사 내용이 부족해 보여도, 없는 내용을 상상하거나 보완하지 마세요.
+불확실한 정보는 "~로 알려졌습니다", "~것으로 보입니다"를 사용하되,
+기사에 전혀 없는 사실을 만들어내는 것은 방송 사고입니다.
 
 [필수 형식]
 - 반드시 "다음 소식입니다."로 시작
