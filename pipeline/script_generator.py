@@ -292,16 +292,21 @@ def _build_retry_feedback(issues: list, failed_script: str) -> str:
     return "\n".join(parts)
 
 
-def generate_script(article: Article) -> Optional[tuple]:
+def generate_script(article: Article, is_breaking: bool = False) -> Optional[tuple]:
     """
     Generate a Korean radio TTS script via the configured LLM.
     Returns (script, topic) tuple, or None on failure.
     topic is the short Korean topic string for 'Now Playing' display (may be empty string).
     Runs QA validation; retries once on failure; uses minimal fallback on refusal.
+
+    is_breaking: lower word floor to 100 (breaking news often has thin source material;
+    retry prompt causes the model to generate even shorter scripts on thin articles)
     """
     from datetime import datetime, timezone, timedelta
     from pipeline.script_qa import qa_script, detect_refusal
     from monitoring.health import increment
+
+    min_words = 100 if is_breaking else 150
 
     now_kst = datetime.now(timezone(timedelta(hours=9)))
     kst_now = _fmt_kst(now_kst)
@@ -348,7 +353,7 @@ def generate_script(article: Article) -> Optional[tuple]:
             log.debug("structured_output_fallback_plain", title=article.title[:60])
 
         # Run QA on the extracted script text
-        qa = qa_script(script_text, article.body)
+        qa = qa_script(script_text, article.body, min_words=min_words)
         if qa.passed:
             script = script_text
             break

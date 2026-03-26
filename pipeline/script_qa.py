@@ -47,10 +47,12 @@ def detect_refusal(script: str) -> bool:
 
 # ── Main QA function ──────────────────────────────────────────────────────────
 
-def qa_script(script: str, source_body: str = "") -> QAResult:
+def qa_script(script: str, source_body: str = "", min_words: int = 150) -> QAResult:
     """
     Run rule-based QA on a generated Korean radio script.
     Returns QAResult with passed=False if any hard issue is found.
+
+    min_words: word count floor (default 150; pass 100 for breaking news with thin source material)
     """
     issues: list[str] = []
 
@@ -62,10 +64,10 @@ def qa_script(script: str, source_body: str = "") -> QAResult:
     if not re.search(r'이상으로.{1,60}소식이었습니다', script):
         issues.append("CLOSING_MISSING")
 
-    # 3. Word count (target 170-210 어절; < 150 triggers retry with feedback)
+    # 3. Word count (target 170-210 어절; < min_words triggers retry with feedback)
     wc = len(script.split())
-    if wc < 150:
-        issues.append(f"WORD_COUNT_{wc}_too_short_min_150")
+    if wc < min_words:
+        issues.append(f"WORD_COUNT_{wc}_too_short_min_{min_words}")
 
     # 4. Detect JSON extraction failure
     _JSON_KEYWORDS = {"script", "topic", "word_count", "false", "true", "null"}
