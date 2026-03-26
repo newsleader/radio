@@ -263,18 +263,27 @@ def _build_retry_feedback(issues: list, failed_script: str) -> str:
     word_count = len(failed_script.split())
     for issue in issues:
         if "WORD_COUNT" in issue:
+            needed = 170 - word_count
             parts.append(
-                f"- 어절 수 부족: 이전 대본은 {word_count}어절. "
-                "반드시 170어절 이상 작성하세요. 배경·원인·인용·전망을 충분히 서술하세요."
+                f"- 어절 수 부족: 이전 대본은 {word_count}어절 (목표 170~210어절, {needed}어절 부족). "
+                "다음을 추가하세요: 배경·원인(왜 이 일이 일어났나), "
+                "숫자·규모(구체적 수치), 전문가 인용 또는 당사자 입장, "
+                "향후 전망 또는 영향. 반드시 8문장 이상 작성하세요."
             )
         elif issue == "CLOSING_MISSING":
             parts.append(
                 "- 마무리 문구 누락: 반드시 '이상으로 [구체적 주제] 소식이었습니다.'로 끝내세요."
             )
         elif "LIST_FORMAT" in issue:
+            # Extract the detected markers for a more targeted message
+            import re as _re
+            found = _re.search(r'LIST_FORMAT: (.+)', issue)
+            detected = found.group(1) if found else "'첫째/둘째/셋째'"
             parts.append(
-                "- 나열 구조 금지 위반: '첫째/둘째/셋째' 등 번호 나열이 감지되었습니다. "
-                "각 항목을 독립 문장으로 서술하세요."
+                f"- 나열 구조 절대 금지: {detected} 표현이 감지되었습니다. "
+                "'첫째', '둘째', '셋째', '넷째', '①②③④', '△' 단어를 절대 사용하지 마세요. "
+                "나열 대신 접속사를 사용하세요: "
+                "'셋째, X 프로그램이 있습니다' → '또한 X 프로그램도 마련되어 있습니다'"
             )
         elif issue == "OPENING_WRONG":
             parts.append(
