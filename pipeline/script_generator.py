@@ -321,9 +321,8 @@ def generate_script(article: Article) -> Optional[tuple]:
             log.warning("script_refusal_detected", title=article.title[:60],
                         attempt=attempt + 1)
             increment("scripts_qa_failed")
-            # Use minimal fallback immediately — no point retrying refusals
-            script = generate_minimal_fallback(article)
-            log.info("minimal_fallback_used", title=article.title[:60])
+            # Skip article — minimal fallback produces English title + 20 words,
+            # which bypasses QA and airs garbage content on radio
             break
 
         # Try structured JSON extraction (Pydantic validation)
