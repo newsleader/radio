@@ -2,6 +2,10 @@
 
 ## 2026-03-26
 
+### PR #52 — fix: abbreviated currency suffix handling + clustering docstring
+- `_preprocess_for_tts`: add abbreviated $NB/$NM/$NT patterns — `$1.2B` → "12억 달러", `$500M` → "5억 달러" (safety net when LLM misses conversion; spelled-out billion/million patterns unaffected)
+- `event_clustering.py`: docstring "single-linkage" → "complete-linkage" (implementation was already complete-linkage since PR #6; doc was stale)
+
 ### PR #51 — fix: expand non-news title filter (Hive Life, weekly roundups, MK screeners)
 - `Hive Life:` prefix (Macro Hive lifestyle articles) → fluffy non-finance scripts
 - `Week in Review / Weekly Roundup / Weekly Recap` → compilation summaries redundant when individual stories already aired

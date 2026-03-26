@@ -67,10 +67,13 @@ _ACRONYM_MAP = {
 
 def _preprocess_for_tts(text: str) -> str:
     """Convert English numbers/units/acronyms to Korean-readable forms."""
-    # Currency with scale words
+    # Currency with scale words (spelled-out and abbreviated: $1.2B, $500M, $2T)
     text = re.sub(r'\$(\d+(?:\.\d+)?)\s*[Tt]rillion', lambda m: f"{m.group(1)}조 달러", text)
+    text = re.sub(r'\$(\d+(?:\.\d+)?)\s*[Tt](?=[^a-zA-Z]|$)', lambda m: f"{m.group(1)}조 달러", text)
     text = re.sub(r'\$(\d+(?:\.\d+)?)\s*[Bb]illion', lambda m: f"{m.group(1)}억 달러", text)
+    text = re.sub(r'\$(\d+(?:\.\d+)?)\s*[Bb](?=[^a-zA-Z]|$)', lambda m: f"{float(m.group(1)) * 10:.4g}억 달러", text)
     text = re.sub(r'\$(\d+(?:\.\d+)?)\s*[Mm]illion', lambda m: f"{m.group(1)}백만 달러", text)
+    text = re.sub(r'\$(\d+(?:\.\d+)?)\s*[Mm](?=[^a-zA-Z]|$)', lambda m: f"{m.group(1)}백만 달러", text)
     text = re.sub(r'\$(\d+(?:,\d+)*(?:\.\d+)?)', lambda m: f"{m.group(1)}달러", text)
     text = re.sub(r'€(\d+(?:\.\d+)?)', lambda m: f"{m.group(1)}유로", text)
     text = re.sub(r'£(\d+(?:\.\d+)?)', lambda m: f"{m.group(1)}파운드", text)

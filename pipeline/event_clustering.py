@@ -75,7 +75,7 @@ def cluster_articles(
     max_cluster_size: int = 10,
 ) -> list[EventCluster]:
     """
-    Cluster articles by topic similarity using TF-IDF cosine + single-linkage.
+    Cluster articles by topic similarity using TF-IDF cosine + complete-linkage.
 
     Args:
         articles: list of Article objects (must have .title, .body, .source)
