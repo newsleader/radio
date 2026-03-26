@@ -2,6 +2,11 @@
 
 ## 2026-03-26
 
+### PR #46 — fix: skip article when WORD_COUNT fails after retry
+- PR #45 loophole: 130-word script fails QA → retry → still 130 words → `>= 50 words` fallback used it anyway
+- Fix: `WORD_COUNT` failures skip the `>= 50 word` fallback; minor failures (BRACKETS, CLOSING_MISSING) still use it
+- Short scripts no longer air via the back door
+
 ### PR #45 — fix: raise QA min word count 120→150 + remove Netflix Tech Blog feed
 - QA min word count: 120 → 150 — scripts at 130-149 words now fail QA and get retry with WORD_COUNT feedback
 - With gemma3:12b, last run produced scripts at 130, 143, 155, 161 words — the 120 threshold was never triggering retries
