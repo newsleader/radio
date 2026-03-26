@@ -1,5 +1,12 @@
 # NewsLeader Continuous Improvement Log
 
+## 2026-03-26
+
+### PR #45 — fix: raise QA min word count 120→150 + remove Netflix Tech Blog feed
+- QA min word count: 120 → 150 — scripts at 130-149 words now fail QA and get retry with WORD_COUNT feedback
+- With gemma3:12b, last run produced scripts at 130, 143, 155, 161 words — the 120 threshold was never triggering retries
+- Netflix Tech Blog removed: avg_latency=27113ms always exceeds 20s FETCH_TIMEOUT; engineering blog not news; was in permanent fail→backoff→retry→timeout cycle
+
 ## 2026-03-25
 
 ### PR #4 — fix: skip GDELT in emergency mode + raise BUFFER_LOW to 300s

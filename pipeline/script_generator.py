@@ -369,7 +369,10 @@ def generate_script(article: Article) -> Optional[tuple]:
                     log.warning("script_rescued_from_json", title=article.title[:60])
                     script = rescued.script
                     break
-            if len(script_text.split()) >= 50:
+            # Don't use script if WORD_COUNT failed — a short script is worse than no script.
+            # Allow other minor failures (BRACKETS_FOUND, CLOSING_MISSING) to pass through.
+            word_count_failed = any("WORD_COUNT" in issue for issue in qa.issues)
+            if not word_count_failed and len(script_text.split()) >= 50:
                 log.warning("script_qa_failed_using_anyway", title=article.title[:60])
                 script = script_text
             break
