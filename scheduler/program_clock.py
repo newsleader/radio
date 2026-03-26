@@ -148,11 +148,16 @@ def run_content_pipeline(emergency: bool = False) -> None:
         # Cluster articles to find cross-feed coverage (boosts important stories)
         clusters = cluster_articles(articles)
         # Build {article_url → cluster_size} for scoring
+        # and {article_url → cluster_canonical_url} for per-cluster dedup
         cluster_size_map: dict[str, int] = {}
+        cluster_id_map: dict[str, str] = {}   # url → first-article-url of its cluster
         for cluster in clusters:
             sz = cluster.source_count
+            canonical = cluster.articles[0].url  # stable cluster ID
             for a in cluster.articles:
                 cluster_size_map[a.url] = sz
+                if sz > 1:  # only multi-source clusters need dedup
+                    cluster_id_map[a.url] = canonical
 
         # Score articles: base score × time-of-day category weight
         scored_raw = []
@@ -182,6 +187,9 @@ def run_content_pipeline(emergency: bool = False) -> None:
         # before either is persisted to DB, so both pass the fetcher's title-hash check.
         # Track titles within this pipeline run to prevent duplicate broadcasts.
         seen_titles_this_run: set[str] = set()
+        # Per-cluster dedup: different feeds can carry the same story with different titles.
+        # After the first article from a multi-source cluster airs, skip the rest.
+        seen_cluster_ids: set[str] = set()
 
         for article, art_score, category in scored:
             if audio_queue.is_full():
@@ -207,6 +215,16 @@ def run_content_pipeline(emergency: bool = False) -> None:
                     log.debug("source_cap_skipped",
                               source=article.source, count=src_count)
                     continue
+
+            # Per-cluster dedup: only one article per news event per pipeline run.
+            # Two Korean feeds often carry the same story with slightly different titles,
+            # both passing title-hash and simhash checks but being the same broadcast item.
+            cluster_id = cluster_id_map.get(article.url)
+            if cluster_id:
+                if cluster_id in seen_cluster_ids:
+                    log.debug("cluster_dup_skipped", title=article.title[:60])
+                    continue
+                seen_cluster_ids.add(cluster_id)
 
             # Editorial diversity check
             if not emergency and not editorial_scheduler.should_broadcast(category, is_breaking_news=is_brk):

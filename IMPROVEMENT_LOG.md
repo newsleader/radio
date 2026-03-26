@@ -2,6 +2,10 @@
 
 ## 2026-03-26
 
+### PR #47 — fix: filter 골든크로스/데드크로스 stock screener titles
+- These automated screener alerts reached LLM and caused hallucinated scripts (LLM invented discount promotions)
+- Added `골든크로스|데드크로스` to `_NON_NEWS_TITLE_RE` — filtered before body HTTP fetch
+
 ### PR #46 — fix: skip article when WORD_COUNT fails after retry
 - PR #45 loophole: 130-word script fails QA → retry → still 130 words → `>= 50 words` fallback used it anyway
 - Fix: `WORD_COUNT` failures skip the `>= 50 word` fallback; minor failures (BRACKETS, CLOSING_MISSING) still use it
