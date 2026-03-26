@@ -2,6 +2,12 @@
 
 ## 2026-03-26
 
+### PR #53 — fix: anti-hallucination prompt + lower temperature + MK시그널 filter
+- `[절대 원칙 — 팩트 준수]` section added to system prompt: LLM must use only article-provided facts, no invented content
+- Temperature 0.75 → 0.65: reduces creative invention while keeping sentence variety
+- Root cause: `gemma3:12b` mixed BTS/Netflix concert content (from training data) into a Korea Herald budget bill article — hallucinated "넷플릭스를 통해 전 세계 동시 생중계" and topic "추가 예산안 제출 및 BTS 컴백 콘서트" was aired
+- Added `[MK시그널]`, `[MK파이낸셜시그널]`, `[MK주식]`, `[MK증권]` to non-news filter (PR #51 caught `[MK 상한가]` with space; `[MK시그널]` has no space)
+
 ### PR #52 — fix: abbreviated currency suffix handling + clustering docstring
 - `_preprocess_for_tts`: add abbreviated $NB/$NM/$NT patterns — `$1.2B` → "12억 달러", `$500M` → "5억 달러" (safety net when LLM misses conversion; spelled-out billion/million patterns unaffected)
 - `event_clustering.py`: docstring "single-linkage" → "complete-linkage" (implementation was already complete-linkage since PR #6; doc was stale)
