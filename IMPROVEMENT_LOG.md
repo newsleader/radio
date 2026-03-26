@@ -2,6 +2,11 @@
 
 ## 2026-03-26
 
+### PR #50 — fix: prefer Korean topic from closing phrase when JSON topic is English
+- `gemma3:12b` sometimes returns English title as JSON topic for English-sourced articles
+- Fix: if meta_topic has no Korean chars, extract from `이상으로 [topic] 소식이었습니다.` closing phrase
+- Korean-titled articles unaffected; English-source articles now show Korean in ICY/now_playing
+
 ### PR #49 — fix: lower QA word floor to 100 for breaking news
 - 속보 articles with thin source material: LLM generates 138 words → QA fails → retry → 112 words (worse) → skipped
 - Breaking news uses min_words=100 via `is_breaking=True` in generate_script; regular articles keep 150-word floor
