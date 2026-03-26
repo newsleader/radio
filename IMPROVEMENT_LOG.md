@@ -2,6 +2,12 @@
 
 ## 2026-03-26
 
+### PR #51 — fix: expand non-news title filter (Hive Life, weekly roundups, MK screeners)
+- `Hive Life:` prefix (Macro Hive lifestyle articles) → fluffy non-finance scripts
+- `Week in Review / Weekly Roundup / Weekly Recap` → compilation summaries redundant when individual stories already aired
+- `[MK 상한가/하한가/특징주/급등/급락]` → MK automated stock screener alerts (like 골든크로스, these cause LLM hallucination)
+- `상한가 종목 / 하한가 종목` → Korean stock upper/lower limit screener lists (thin data → LLM hallucinates to fill word count)
+
 ### PR #50 — fix: prefer Korean topic from closing phrase when JSON topic is English
 - `gemma3:12b` sometimes returns English title as JSON topic for English-sourced articles
 - Fix: if meta_topic has no Korean chars, extract from `이상으로 [topic] 소식이었습니다.` closing phrase
