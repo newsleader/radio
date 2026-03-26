@@ -62,10 +62,10 @@ def qa_script(script: str, source_body: str = "") -> QAResult:
     if not re.search(r'이상으로.{1,60}소식이었습니다', script):
         issues.append("CLOSING_MISSING")
 
-    # 3. Word count (target 170-210 어절; < 120 is clearly a failure)
+    # 3. Word count (target 170-210 어절; < 150 triggers retry with feedback)
     wc = len(script.split())
-    if wc < 120:
-        issues.append(f"WORD_COUNT_{wc}_too_short_min_120")
+    if wc < 150:
+        issues.append(f"WORD_COUNT_{wc}_too_short_min_150")
 
     # 4. Detect JSON extraction failure
     _JSON_KEYWORDS = {"script", "topic", "word_count", "false", "true", "null"}

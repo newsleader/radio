@@ -164,8 +164,6 @@ RSS_FEEDS = [
     ("Sebastian Raschka",     "https://magazine.sebastianraschka.com/feed"),
 
     # ── 빅테크 엔지니어링 블로그 ────────────────────────────────────
-    # Netflix — 추천 시스템, 대규모 분산 아키텍처
-    ("Netflix Tech Blog",     "https://netflixtechblog.com/feed"),
     # Meta Engineering — React, PyTorch, 인프라
     ("Meta Engineering",      "https://engineering.fb.com/feed/"),
     # AWS News — 클라우드 신규 서비스 발표
