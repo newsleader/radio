@@ -178,6 +178,10 @@ def run_content_pipeline(emergency: bool = False) -> None:
         # e.g. 6 crypto sources × 8 articles each = 48 candidates; cap each at 2.
         _MAX_PER_SOURCE = 2
         source_counts: dict[str, int] = {}
+        # In-run title dedup: two feeds can return the same 속보 article concurrently
+        # before either is persisted to DB, so both pass the fetcher's title-hash check.
+        # Track titles within this pipeline run to prevent duplicate broadcasts.
+        seen_titles_this_run: set[str] = set()
 
         for article, art_score, category in scored:
             if audio_queue.is_full():
@@ -188,6 +192,13 @@ def run_content_pipeline(emergency: bool = False) -> None:
             is_brk = breaking_detector.check_and_register(article.title, article.source)
             if is_brk:
                 increment("breaking_news")
+
+            # In-run title dedup (catches concurrent fetch of same 속보 from multiple feeds)
+            title_norm = article.title.lower().strip()
+            if title_norm in seen_titles_this_run:
+                log.debug("in_run_title_dup_skipped", title=article.title[:60])
+                continue
+            seen_titles_this_run.add(title_norm)
 
             # Per-source cap (breaking news bypasses)
             if not is_brk:
