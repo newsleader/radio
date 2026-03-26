@@ -2,6 +2,11 @@
 
 ## 2026-03-26
 
+### PR #48 — fix: per-cluster dedup — only one article per news event per pipeline run
+- Different Korean feeds carry the same story with slightly different titles → both passed title-hash/simhash/in-run dedup → same story aired twice in same run
+- cluster_id_map: {url → canonical_url} for multi-source clusters; seen_cluster_ids tracks aired clusters per run
+- After first article from a cluster airs, rest are `cluster_dup_skipped`; single-source clusters unaffected
+
 ### PR #47 — fix: filter 골든크로스/데드크로스 stock screener titles
 - These automated screener alerts reached LLM and caused hallucinated scripts (LLM invented discount promotions)
 - Added `골든크로스|데드크로스` to `_NON_NEWS_TITLE_RE` — filtered before body HTTP fetch

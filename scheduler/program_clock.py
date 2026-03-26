@@ -233,7 +233,7 @@ def run_content_pipeline(emergency: bool = False) -> None:
                 continue
 
             try:
-                result = generate_script(article)
+                result = generate_script(article, is_breaking=is_brk)
             except Exception as exc:
                 log.warning("script_skipped",
                             title=article.title[:60], error=type(exc).__name__)
