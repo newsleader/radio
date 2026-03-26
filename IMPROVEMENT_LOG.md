@@ -197,6 +197,11 @@
 - Example: "e's new Dynamic Workers ditch containers to run AI agent code 100x faster. 이상으로 VentureBeat 소식이었습니다." (words=20)
 - Fix: on detect_refusal=True, break without setting script → generate_script returns None → article silently skipped
 
+### PR #44 — fix: stronger QA retry feedback for LIST_FORMAT and WORD_COUNT
+- LIST_FORMAT: old message "각 항목을 독립 문장으로 서술하세요" too vague → BFC article used '셋째' on both attempts
+- New: explicitly names detected words, bans 첫째/둘째/셋째/넷째/①②③④/△, provides concrete example conversion
+- WORD_COUNT: now shows exact deficit ("58어절 부족"), lists 4 content types to add, requires "8문장 이상"
+
 ### PR #43 — fix: in-run title dedup to prevent same 속보 airing twice
 - Race condition: multiple feeds fetch same article simultaneously → both pass fetcher's title-hash check (DB not updated yet) → same story airs twice in one pipeline run
 - Observed: 25조 추경 예산안 aired at 00:11 and 00:13 (2 min apart, same pipeline run)
