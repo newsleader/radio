@@ -197,6 +197,17 @@
 - Example: "e's new Dynamic Workers ditch containers to run AI agent code 100x faster. 이상으로 VentureBeat 소식이었습니다." (words=20)
 - Fix: on detect_refusal=True, break without setting script → generate_script returns None → article silently skipped
 
+### PR #43 — fix: in-run title dedup to prevent same 속보 airing twice
+- Race condition: multiple feeds fetch same article simultaneously → both pass fetcher's title-hash check (DB not updated yet) → same story airs twice in one pipeline run
+- Observed: 25조 추경 예산안 aired at 00:11 and 00:13 (2 min apart, same pipeline run)
+- Fix: seen_titles_this_run set in run_content_pipeline() — skip articles with already-queued title
+- Placed AFTER breaking_detector.check_and_register() so multi-feed coverage still boosts importance
+
+### PR #42 — feat: add cybersecurity as dedicated editorial category
+- Security articles (Krebs, Bleeping Computer, The Hacker News, CISA, Unit 42, Malwarebytes, Schneier, Recorded Future, 보안뉴스) all bucketed into tech → consuming all 5 tech slots per window
+- New cybersecurity category: 23 keywords, 9 source tiers, _MAX_PER_WINDOW=3
+- Source fallback: security sources detected before tech fallback; "hacker" removed from tech (was matching "The Hacker News")
+
 ### PR #40 — fix: per-source pipeline cap (max 2 articles per source per run)
 - 6 crypto sources (CoinDesk, CoinTelegraph, Decrypt, Bitcoin Magazine, 블록미디어, 토큰포스트) could each contribute 8 articles → 48 crypto candidates per run
 - MMR diversifies by content similarity, not source identity → two CoinDesk articles on different subtopics both passed
