@@ -7,6 +7,8 @@ Used to catch format violations and LLM refusals before TTS synthesis.
 import re
 from dataclasses import dataclass
 
+from config import config
+
 
 @dataclass
 class QAResult:
@@ -21,9 +23,7 @@ _REFUSAL_PATTERNS = [
     r'제공할\s*수\s*없',
     r'작성하기\s*어렵',
     r'부적절한\s*내용',
-    r'저는\s*인공지능',
-    r'AI\s*어시스턴트',
-    r'언어\s*모델',
+    r'저는\s*(?:인공지능|AI\s*어시스턴트|언어\s*모델)',
     r'As an AI',
     r"I'm sorry",
     r'I cannot',
@@ -47,7 +47,7 @@ def detect_refusal(script: str) -> bool:
 
 # ── Main QA function ──────────────────────────────────────────────────────────
 
-def qa_script(script: str, source_body: str = "", min_words: int = 150) -> QAResult:
+def qa_script(script: str, source_body: str = "", min_words: int = config.SCRIPT_MIN_WORDS) -> QAResult:
     """
     Run rule-based QA on a generated Korean radio script.
     Returns QAResult with passed=False if any hard issue is found.
