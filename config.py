@@ -34,6 +34,12 @@ class Config:
     LLM_BASE_URL: str = "http://localhost:11434/v1"
     LLM_MODEL: str = "bnksys/eeve:korean-instruct"
     LLM_API_KEY: str = "ollama"   # Ollama ignores the value; set to real key for remote APIs
+    LLM_TEMPERATURE: float = 0.75
+    LLM_MAX_TOKENS: int = 4096    # thinking models consume tokens before output; keep ≥ 4096
+
+    # Script QA
+    SCRIPT_MIN_WORDS: int = 150           # regular articles
+    SCRIPT_MIN_WORDS_BREAKING: int = 100  # breaking news (thin source material)
 
     # Storage
     DB_PATH: str = "data/articles.db"
