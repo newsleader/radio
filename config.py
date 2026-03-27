@@ -38,8 +38,8 @@ class Config:
     LLM_MAX_TOKENS: int = 4096    # thinking models consume tokens before output; keep ≥ 4096
 
     # Script QA
-    SCRIPT_MIN_WORDS: int = 150           # regular articles
-    SCRIPT_MIN_WORDS_BREAKING: int = 100  # breaking news (thin source material)
+    SCRIPT_MIN_WORDS: int = 130           # regular articles (~43s audio; model tops out ~130 on thin sources)
+    SCRIPT_MIN_WORDS_BREAKING: int = 90   # breaking news (thin source material)
 
     # Storage
     DB_PATH: str = "data/articles.db"
